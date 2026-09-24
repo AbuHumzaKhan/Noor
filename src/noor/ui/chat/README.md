@@ -2,11 +2,17 @@
 
 Static HTML5/CSS3/JavaScript interface for the Noor Unified Automation Orchestra.
 
+## Interactive screens
+
+- `index.html` — normal Noor screen: the rounded Noor orb is the entry point and the chat panel appears only after clicking it.
+- `preview.html` — visual interaction screen: opens with the full chatbox visible so the UI can be inspected and tested immediately.
+
 ## Current scope
 
 - Floating rounded Noor orb
 - Click-to-open chat panel
 - Responsive chat layout
+- Full visual preview stage
 - Message composer
 - Enter-to-send and Shift+Enter for multiline input
 - Suggested next-step actions
@@ -20,6 +26,7 @@ The current interface is intentionally frontend-only. `app.js` contains a small 
 
 ## Files
 
-- `index.html` — chat structure
+- `index.html` — normal chat screen
+- `preview.html` — full visual/interactive preview screen
 - `styles.css` — responsive visual system and floating-orb interaction
 - `app.js` — interaction, message handling, and next-step suggestion behavior
