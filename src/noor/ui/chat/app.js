@@ -8,6 +8,20 @@ const suggestions = document.getElementById("suggestions");
 const datasetFile = document.getElementById("datasetFile");
 const fileName = document.getElementById("fileName");
 const statusText = document.getElementById("statusText");
+const datasetEmpty = document.getElementById("datasetEmpty");
+const datasetView = document.getElementById("datasetView");
+const datasetTitle = document.getElementById("datasetTitle");
+const datasetMeta = document.getElementById("datasetMeta");
+const workspaceTitle = document.getElementById("workspaceTitle");
+const workspaceSubtitle = document.getElementById("workspaceSubtitle");
+const workspaceState = document.getElementById("workspaceState");
+const statFormat = document.getElementById("statFormat");
+const statRows = document.getElementById("statRows");
+const statColumns = document.getElementById("statColumns");
+const statSize = document.getElementById("statSize");
+const previewCaption = document.getElementById("previewCaption");
+const dataTable = document.getElementById("dataTable");
+const refreshPreview = document.getElementById("refreshPreview");
 
 let selectedDataPath = null;
 let selectedFileExtension = null;
@@ -86,6 +100,79 @@ function updateDatasetActions() {
   });
 }
 
+function formatBytes(bytes) {
+  if (!Number.isFinite(bytes) || bytes < 1024) return `${bytes || 0} B`;
+  const units = ["KB", "MB", "GB"];
+  let value = bytes;
+  let unit = -1;
+  do {
+    value /= 1024;
+    unit += 1;
+  } while (value >= 1024 && unit < units.length - 1);
+  return `${value.toFixed(value >= 10 ? 0 : 1)} ${units[unit]}`;
+}
+
+function setWorkspaceState(label, active = false) {
+  workspaceState.innerHTML = `<span class="status-dot${active ? " workspace-active" : ""}"></span><span>${escapeHtml(label)}</span>`;
+}
+
+function clearTable() {
+  dataTable.querySelector("thead").replaceChildren();
+  dataTable.querySelector("tbody").replaceChildren();
+}
+
+function renderDatasetPreview(preview) {
+  datasetEmpty.classList.add("is-hidden");
+  datasetView.classList.remove("is-hidden");
+  workspaceTitle.textContent = preview.filename;
+  workspaceSubtitle.textContent = `${preview.format} dataset loaded. Use Noor's chat to inspect, profile, analyze, clean, transform, search, or automate this data.`;
+  datasetTitle.textContent = preview.filename;
+  datasetMeta.textContent = `${preview.format} · ${preview.extension} · ${formatBytes(preview.bytes)}`;
+  statFormat.textContent = preview.format;
+  statRows.textContent = String(preview.rows_returned);
+  statColumns.textContent = String(preview.columns.length);
+  statSize.textContent = formatBytes(preview.bytes);
+  previewCaption.textContent = `First ${preview.rows_returned} row${preview.rows_returned === 1 ? "" : "s"}`;
+  setWorkspaceState("Dataset ready", true);
+
+  clearTable();
+  const head = dataTable.querySelector("thead");
+  const body = dataTable.querySelector("tbody");
+  const headerRow = document.createElement("tr");
+  preview.columns.forEach((column) => {
+    const cell = document.createElement("th");
+    cell.textContent = column;
+    cell.title = preview.dtypes?.[column] || "";
+    headerRow.appendChild(cell);
+  });
+  head.appendChild(headerRow);
+
+  preview.records.forEach((record, rowIndex) => {
+    const row = document.createElement("tr");
+    preview.columns.forEach((column) => {
+      const cell = document.createElement("td");
+      const value = record[column];
+      cell.textContent = value === null || value === undefined ? "NULL" : String(value);
+      if (value === null || value === undefined) cell.classList.add("null-value");
+      if (rowIndex === 0) cell.setAttribute("data-row", "1");
+      row.appendChild(cell);
+    });
+    body.appendChild(row);
+  });
+}
+
+async function refreshDatasetPreview() {
+  if (!selectedDataPath) return;
+  const response = await fetch("/api/preview", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path: selectedDataPath }),
+  });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(payload.error || "Could not preview the dataset");
+  renderDatasetPreview(payload);
+}
+
 async function checkHealth() {
   try {
     const response = await fetch("/api/health", { cache: "no-store" });
@@ -101,12 +188,15 @@ async function uploadDataset(file) {
   const body = new FormData();
   body.append("file", file);
   statusText.textContent = "Uploading";
+  setWorkspaceState("Uploading dataset");
   const response = await fetch("/api/upload", { method: "POST", body });
   const payload = await response.json();
   if (!response.ok) throw new Error(payload.error || "Upload failed");
   selectedDataPath = payload.upload.path;
   selectedFileExtension = file.name.includes(".") ? file.name.split(".").pop().toLowerCase() : "data";
   fileName.textContent = `${payload.upload.filename} · .${selectedFileExtension}`;
+  statusText.textContent = "Loading preview";
+  await refreshDatasetPreview();
   statusText.textContent = "Dataset ready";
   updateDatasetActions();
 }
@@ -125,14 +215,27 @@ async function executeRequest(text) {
 orb.addEventListener("click", openChat);
 closeChat.addEventListener("click", closePanel);
 
+refreshPreview.addEventListener("click", async () => {
+  if (!selectedDataPath) return;
+  try {
+    statusText.textContent = "Refreshing";
+    await refreshDatasetPreview();
+    statusText.textContent = "Dataset ready";
+  } catch (error) {
+    statusText.textContent = "Error";
+    appendMessage(error.message || "Could not refresh the dataset preview.");
+  }
+});
+
 datasetFile.addEventListener("change", async () => {
   const file = datasetFile.files?.[0];
   if (!file) return;
   try {
     await uploadDataset(file);
-    appendMessage(`Attached ${file.name}. Dataset actions are now available.`);
+    appendMessage(`Attached ${file.name}. The live dataset preview is now available on the workspace.`);
   } catch (error) {
     statusText.textContent = "Ready";
+    setWorkspaceState("Preview unavailable");
     appendMessage(error.message || "Dataset upload failed.");
   }
 });
@@ -153,6 +256,7 @@ form.addEventListener("submit", async (event) => {
   }
 
   statusText.textContent = "Planning";
+  setWorkspaceState("Noor is working");
   const typing = document.createElement("article");
   typing.className = "message assistant-message";
   typing.innerHTML = `<div class="message-avatar">N</div><div class="message-content"><span class="message-role">Noor</span><p class="typing">Building the task graph and selecting providers…</p></div>`;
@@ -163,16 +267,26 @@ form.addEventListener("submit", async (event) => {
     const result = await executeRequest(text);
     typing.remove();
     statusText.textContent = result.success ? "Completed" : "Attention required";
+    setWorkspaceState(result.success ? "Workflow completed" : "Attention required", result.success);
     appendWorkflow(result);
+    if (result.success && selectedDataPath) {
+      try {
+        await refreshDatasetPreview();
+      } catch {
+        // The workflow result remains valid even if the optional visual refresh fails.
+      }
+    }
   } catch (error) {
     typing.remove();
     const message = error.message || "Noor could not complete the request.";
     if (/attach a dataset|workbook|dataset/i.test(message) && !selectedDataPath) {
       statusText.textContent = "Ready";
+      setWorkspaceState("Waiting for dataset");
       appendMessage("Please attach a dataset first. I have kept the system ready so you can continue without restarting Noor.");
       datasetFile.click();
     } else {
       statusText.textContent = "Error";
+      setWorkspaceState("Attention required");
       appendMessage(message);
     }
   }
