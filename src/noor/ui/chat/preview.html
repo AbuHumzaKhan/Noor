@@ -9,89 +9,142 @@
   <link rel="stylesheet" href="./workspace.css">
 </head>
 <body class="preview-page">
-  <main class="preview-shell">
-    <section class="data-workspace" aria-label="Noor data workspace">
-      <header class="workspace-header">
-        <div class="workspace-heading">
-          <div class="heading-line">
-            <span class="preview-badge">NOOR DATA WORKSPACE</span>
-            <span class="workspace-state" id="workspaceState"><span class="status-dot"></span><span>Waiting for dataset</span></span>
+  <main class="app-shell" aria-label="Noor data workspace">
+    <aside class="workspace-sidebar">
+      <div class="brand-block">
+        <button class="brand-orb" id="sidebarOrb" type="button" aria-label="Open Noor assistant"><span class="orb-core"></span></button>
+        <div><strong>NOOR</strong><span>Data Workspace</span></div>
+      </div>
+      <nav class="sidebar-nav" aria-label="Workspace navigation">
+        <button class="sidebar-item is-active" data-view="data" type="button"><span>▦</span>Data</button>
+        <button class="sidebar-item" data-view="profile" type="button"><span>◉</span>Profile</button>
+        <button class="sidebar-item" data-view="quality" type="button"><span>◌</span>Quality</button>
+        <button class="sidebar-item" data-view="columns" type="button"><span>▥</span>Columns</button>
+        <button class="sidebar-item" data-view="insights" type="button"><span>✦</span>Insights</button>
+        <button class="sidebar-item" data-view="charts" type="button"><span>▥</span>Charts</button>
+        <button class="sidebar-item" data-view="transform" type="button"><span>⇄</span>Transform</button>
+        <button class="sidebar-item" data-view="activity" type="button"><span>◷</span>Activity</button>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="dataset-status-card">
+          <span>Dataset Status</span>
+          <strong><i class="status-dot"></i><em id="sidebarStatus">Waiting</em></strong>
+          <small id="sidebarRows">Attach a dataset</small>
+          <small id="sidebarColumns">— columns</small>
+          <small id="sidebarQuality">Quality unavailable</small>
+        </div>
+        <div class="memory-status"><span>Workspace memory</span><strong id="sidebarMemory">—</strong></div>
+      </div>
+    </aside>
+
+    <section class="workspace-main">
+      <header class="topbar">
+        <div class="dataset-identity">
+          <div class="file-icon">▦</div>
+          <div class="dataset-heading">
+            <div class="heading-row"><h1 id="workspaceTitle">Noor Data Workspace</h1><span class="workspace-state" id="workspaceState"><span class="status-dot"></span><span>Waiting for dataset</span></span></div>
+            <p id="workspaceSubtitle">Attach a real dataset. Noor will keep the data in this workspace while chat controls inspection, profiling, analysis, cleaning, transformation, and automation.</p>
           </div>
-          <h1 id="workspaceTitle">Your data, one workspace.</h1>
-          <p id="workspaceSubtitle">Attach a dataset and Noor will turn this page into the working surface for inspection, profiling, analysis, cleaning, transformation, and automation.</p>
+        </div>
+        <div class="topbar-actions">
+          <div class="command-box"><span>⌕</span><input id="workspaceCommand" type="text" placeholder="Ask Noor anything about your data…" autocomplete="off"><button id="workspaceCommandSend" type="button">Send</button></div>
+          <button class="topbar-button" id="openAttach" type="button">Attach</button>
+          <button class="topbar-button" id="openChatTop" type="button">Noor</button>
+          <button class="topbar-icon" type="button" title="Workspace settings" aria-label="Workspace settings">⚙</button>
         </div>
       </header>
 
       <section class="dataset-empty" id="datasetEmpty" aria-live="polite">
-        <div class="empty-icon">⌁</div>
+        <div class="empty-icon">▦</div>
         <h2>No dataset loaded</h2>
-        <p>Open Noor, attach a real dataset, and the workspace will populate with its actual rows, schema, quality signals, and verified workflow results.</p>
+        <p>Attach a real dataset and Noor will populate this workspace with its actual schema, records, profile metrics, quality findings, and verified workflow activity.</p>
         <button class="empty-action" id="emptyAttach" type="button">Attach dataset</button>
       </section>
 
       <section class="dataset-view is-hidden" id="datasetView" aria-live="polite">
-        <div class="dataset-toolbar">
-          <div class="dataset-file-info">
-            <div class="file-title-row"><strong id="datasetTitle">Dataset</strong><span class="file-ready">READY</span></div>
-            <span id="datasetMeta">—</span>
-          </div>
-          <div class="toolbar-actions">
-            <button class="toolbar-button" id="refreshPreview" type="button">Refresh</button>
-            <button class="toolbar-button" id="runProfile" type="button">Profile dataset</button>
-          </div>
-        </div>
-
-        <div class="dataset-stats" id="datasetStats">
-          <article><span>Rows</span><strong id="statRows">25 preview</strong><small id="statRowsHint">bounded preview</small></article>
-          <article><span>Columns</span><strong id="statColumns">—</strong><small id="statColumnsHint">loaded schema</small></article>
-          <article><span>Missing</span><strong id="statMissing">—</strong><small id="statMissingHint">profile to calculate</small></article>
-          <article><span>Duplicates</span><strong id="statDuplicates">—</strong><small id="statDuplicatesHint">profile to calculate</small></article>
-          <article><span>Format</span><strong id="statFormat">—</strong><small id="statSize">—</small></article>
-        </div>
+        <section class="metric-strip" aria-label="Dataset metrics">
+          <article class="metric-card metric-blue"><span>▦</span><div><small>Total Rows</small><strong id="statRows">—</strong><em id="statRowsHint">Profile to calculate</em></div></article>
+          <article class="metric-card metric-purple"><span>▥</span><div><small>Total Columns</small><strong id="statColumns">—</strong><em id="statColumnsHint">Loaded schema</em></div></article>
+          <article class="metric-card metric-red"><span>◌</span><div><small>Missing Values</small><strong id="statMissing">—</strong><em id="statMissingHint">Profile to calculate</em></div></article>
+          <article class="metric-card metric-yellow"><span>⟳</span><div><small>Duplicate Rows</small><strong id="statDuplicates">—</strong><em id="statDuplicatesHint">Profile to calculate</em></div></article>
+          <article class="metric-card metric-green"><span>✓</span><div><small>Data Completeness</small><strong id="statQuality">—</strong><em id="statQualityHint">Profile to calculate</em></div></article>
+          <article class="metric-card metric-cyan"><span>◈</span><div><small>Memory Usage</small><strong id="statMemory">—</strong><em id="statMemoryHint">Profile to calculate</em></div></article>
+          <article class="metric-card metric-slate"><span>◷</span><div><small>Last Updated</small><strong id="statUpdated">Now</strong><em id="statUpdatedHint">Local workspace</em></div></article>
+        </section>
 
         <nav class="workspace-tabs" aria-label="Dataset views">
           <button class="workspace-tab is-active" data-view="data" type="button">Data</button>
           <button class="workspace-tab" data-view="profile" type="button">Profile</button>
           <button class="workspace-tab" data-view="quality" type="button">Quality</button>
           <button class="workspace-tab" data-view="columns" type="button">Columns</button>
-          <button class="workspace-tab" data-view="activity" type="button">Noor activity</button>
+          <button class="workspace-tab" data-view="insights" type="button">Insights</button>
+          <button class="workspace-tab" data-view="charts" type="button">Charts</button>
+          <button class="workspace-tab" data-view="transform" type="button">Transform</button>
+          <button class="workspace-tab" data-view="activity" type="button">Activity</button>
         </nav>
 
         <section class="workspace-view is-active" id="view-data" data-view-panel="data">
-          <div class="view-header"><div><h2>Data preview</h2><p>Actual records loaded from the attached dataset. The grid keeps headers visible while you inspect wide and long tables.</p></div><span class="view-note" id="previewCaption">First 25 rows</span></div>
-          <div class="table-shell">
-            <div class="table-caption">
-              <span id="tableSchemaSummary">Schema loading…</span>
-              <span class="grid-selection" id="gridSelection">Click a cell to inspect · Double-click to copy</span>
-              <span class="scroll-hint">Frozen headers · Row numbers · Horizontal scroll</span>
+          <div class="data-layout">
+            <div class="data-primary">
+              <div class="data-toolbar">
+                <label class="table-search"><span>⌕</span><input id="gridSearch" type="search" placeholder="Search in preview…"></label>
+                <button class="grid-tool" id="gridFilter" type="button">▽ Filter</button>
+                <button class="grid-tool" id="gridSort" type="button">↕ Sort</button>
+                <button class="grid-tool" id="gridColumns" type="button">▥ Columns</button>
+                <button class="grid-tool" id="gridDensity" type="button">≡ Density</button>
+                <span class="toolbar-spacer"></span>
+                <span class="preview-count" id="previewCaption">Preview</span>
+              </div>
+              <div class="table-shell">
+                <div class="table-caption"><span id="tableSchemaSummary">Schema loading…</span><span class="grid-selection" id="gridSelection">Click a cell to inspect · Double-click to copy</span><span class="scroll-hint">Preview only · horizontal scroll</span></div>
+                <div class="table-scroll" id="dataTableScroll"><table id="dataTable" aria-label="Dataset data grid"><thead></thead><tbody></tbody></table></div>
+                <div class="table-footer"><span id="gridSelectedCount">0 cells selected</span><span id="gridRangeHint">Showing the bounded preview returned by Noor</span><span id="gridRowCount">— rows</span></div>
+              </div>
             </div>
-            <div class="table-scroll" id="dataTableScroll">
-              <table id="dataTable" aria-label="Dataset data grid"><thead></thead><tbody></tbody></table>
-            </div>
+            <aside class="assistant-dock-card">
+              <div class="dock-title"><div class="mini-orb"><span></span></div><div><strong>Noor Assistant</strong><small>Chat control surface</small></div><button id="openChatDock" type="button">↗</button></div>
+              <div class="dock-prompt"><span>Try:</span><button data-chat-prompt="Profile my data">Profile my data</button><button data-chat-prompt="Find missing values">Find missing values</button><button data-chat-prompt="Analyze my data">Analyze my data</button></div>
+              <div class="dock-note" id="dockNote">Attach a dataset and ask Noor to inspect, profile, analyze, clean, or automate it.</div>
+            </aside>
           </div>
         </section>
 
         <section class="workspace-view" id="view-profile" data-view-panel="profile">
-          <div class="view-header"><div><h2>Dataset profile</h2><p>Computed from the full attached dataset when Noor profiles it.</p></div><button class="inline-action" id="profileFromView" type="button">Run profile</button></div>
-          <div class="profile-grid" id="profileSummary">
-            <div class="profile-placeholder"><strong>Profile not run yet</strong><span>Use “Profile dataset” or ask Noor: “Profile my data”.</span></div>
-          </div>
+          <div class="view-header"><div><h2>Dataset profile</h2><p>Deterministic profile computed from the full attached dataset.</p></div><button class="inline-action" id="profileFromView" type="button">Run profile</button></div>
+          <div class="profile-grid" id="profileSummary"><div class="profile-placeholder"><strong>Profile not run yet</strong><span>Use “Run profile” or ask Noor: “Profile my data”.</span></div></div>
           <div class="column-profile-shell"><div class="section-label">Column profile</div><div class="column-profile" id="columnProfile"></div></div>
         </section>
 
         <section class="workspace-view" id="view-quality" data-view-panel="quality">
-          <div class="view-header"><div><h2>Data quality</h2><p>Issues Noor can investigate before you clean or transform the dataset.</p></div></div>
-          <div class="quality-grid" id="qualityGrid"><div class="profile-placeholder"><strong>Quality checks are waiting</strong><span>Run a profile first so Noor can quantify missing values, duplicates, and constant columns.</span></div></div>
+          <div class="view-header"><div><h2>Data quality</h2><p>Quality signals calculated from the real dataset. Completeness excludes validation rules not currently exposed by the profiler.</p></div></div>
+          <div class="quality-dashboard"><div class="quality-overview" id="qualityOverview"><div class="profile-placeholder"><strong>Quality checks are waiting</strong><span>Run a profile first.</span></div></div><div class="quality-bars" id="qualityBars"></div></div>
+          <div class="quality-grid" id="qualityGrid"></div>
         </section>
 
         <section class="workspace-view" id="view-columns" data-view-panel="columns">
-          <div class="view-header"><div><h2>Column dictionary</h2><p>Actual schema detected from the loaded preview.</p></div></div>
-          <div class="columns-table-shell"><table class="columns-table"><thead><tr><th>Column</th><th>Type</th><th>Preview uniqueness</th><th>Missing in profile</th></tr></thead><tbody id="columnsTable"></tbody></table></div>
+          <div class="view-header"><div><h2>Column dictionary</h2><p>Schema and profile information from the actual loaded dataset.</p></div></div>
+          <div class="columns-table-shell"><table class="columns-table"><thead><tr><th>Column</th><th>Type</th><th>Unique</th><th>Missing</th><th>Missing %</th></tr></thead><tbody id="columnsTable"></tbody></table></div>
+        </section>
+
+        <section class="workspace-view" id="view-insights" data-view-panel="insights">
+          <div class="view-header"><div><h2>Data insights</h2><p>Conservative findings derived only from Noor's deterministic profile. No fabricated business conclusions.</p></div><button class="inline-action" data-chat-prompt="Analyze my data">Ask Noor to analyze</button></div>
+          <div class="insight-grid" id="insightGrid"><div class="profile-placeholder"><strong>Profile required</strong><span>Run a profile to generate evidence-backed observations.</span></div></div>
+        </section>
+
+        <section class="workspace-view" id="view-charts" data-view-panel="charts">
+          <div class="view-header"><div><h2>Charts</h2><p>Live quality visualizations from the full profile. Analytical/business charts can be requested through Noor chat.</p></div><button class="inline-action" data-chat-prompt="Create a useful chart from my data">Ask Noor for a chart</button></div>
+          <div class="charts-grid"><article class="chart-card"><header><strong>Missing values by column</strong><span>Full profile</span></header><div class="bar-chart" id="missingChart"></div></article><article class="chart-card"><header><strong>Column completeness</strong><span>Full profile</span></header><div class="completeness-chart" id="completenessChart"></div></article></div>
+        </section>
+
+        <section class="workspace-view" id="view-transform" data-view-panel="transform">
+          <div class="view-header"><div><h2>Transform</h2><p>Use Noor chat for controlled transformations. The planner decides whether the attached file supports the requested operation.</p></div></div>
+          <div class="transform-grid"><button class="action-card" data-chat-prompt="Clean my data"><strong>Clean data</strong><span>Ask Noor to identify and apply supported cleaning operations.</span></button><button class="action-card" data-chat-prompt="Remove duplicate rows"><strong>Remove duplicates</strong><span>For supported workbook operations, Noor will plan and verify the transformation.</span></button><button class="action-card" data-chat-prompt="Fill blank values"><strong>Fill blanks</strong><span>Specify the column and replacement value in chat.</span></button><button class="action-card" data-chat-prompt="Rename header"><strong>Rename header</strong><span>Specify the header and target name in chat.</span></button></div>
+          <div class="transform-warning">No transformation is performed by this page itself. Every operation is routed through Noor's planner and verification layer.</div>
         </section>
 
         <section class="workspace-view" id="view-activity" data-view-panel="activity">
-          <div class="view-header"><div><h2>Noor activity</h2><p>Every chat-driven workflow is reflected here so the workspace explains what Noor actually did.</p></div></div>
-          <div class="activity-list" id="activityList"><div class="profile-placeholder"><strong>No workflows yet</strong><span>Open Noor and ask for an inspection, profile, analysis, cleaning, transformation, or Excel operation.</span></div></div>
+          <div class="view-header"><div><h2>Noor activity</h2><p>Workflow plans and verification status produced by the real chat execution path.</p></div></div>
+          <div class="activity-list" id="activityList"><div class="profile-placeholder"><strong>No workflows yet</strong><span>Ask Noor to inspect, profile, analyze, clean, transform, or automate the dataset.</span></div></div>
         </section>
       </section>
     </section>
@@ -107,7 +160,9 @@
     <div class="suggestions" id="suggestions" aria-label="Suggested next steps"><button type="button" data-prompt="Inspect my dataset" data-requires-dataset="true" disabled>Inspect</button><button type="button" data-prompt="Profile my data" data-requires-dataset="true" disabled>Profile</button><button type="button" data-prompt="Analyze my data" data-requires-dataset="true" disabled>Analyze</button><button type="button" data-prompt="Search this workbook for Revenue" data-requires-dataset="true" disabled>Search</button><button type="button" data-prompt="Validate formula =SUM(B2:B100)">Formula</button></div>
     <form class="composer" id="chatForm"><label class="sr-only" for="messageInput">Message Noor</label><textarea id="messageInput" rows="1" placeholder="Ask Noor what to do with this data…" autocomplete="off"></textarea><button class="send-button" type="submit" aria-label="Send message">↑</button></form>
   </aside>
+
   <script src="./app.js" defer></script>
   <script src="./grid.js" defer></script>
+  <script src="./dashboard.js" defer></script>
 </body>
 </html>
