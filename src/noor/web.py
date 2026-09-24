@@ -34,14 +34,14 @@ class NoorApplication:
             raise ValueError("request cannot be empty")
         graph = self.planner.plan(request, path or "", sheet_name)
         orchestra = UnifiedOrchestra()
+        registered: set[str] = set()
         for node in graph.nodes:
-            if node.capability == "result.verify":
-                capability = str(node.inputs["capability"])
-                _, handler = self.registry.get("result.verify")
-                orchestra.register_provider(node.capability, handler)
-            else:
-                _, handler = self.registry.get(node.capability)
-                orchestra.register_provider(node.capability, handler)
+            provider_name = "result.verify" if node.capability == "result.verify" else node.capability
+            if provider_name in registered:
+                continue
+            _, handler = self.registry.get(provider_name)
+            orchestra.register_provider(node.capability, handler)
+            registered.add(provider_name)
         executions = orchestra.execute(graph)
         return {
             "request": request,
