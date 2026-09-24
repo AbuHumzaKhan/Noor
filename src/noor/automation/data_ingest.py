@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import csv
-import json
 import sqlite3
 from pathlib import Path
 from typing import Any, ClassVar
@@ -37,10 +35,8 @@ class DataIngestSkill:
         file_path = self.validate_path(path)
         suffix = file_path.suffix.lower()
         result: dict[str, Any] = {
-            "path": str(file_path),
-            "format": self.SUPPORTED_EXTENSIONS[suffix],
-            "extension": suffix,
-            "bytes": file_path.stat().st_size,
+            "path": str(file_path), "format": self.SUPPORTED_EXTENSIONS[suffix],
+            "extension": suffix, "bytes": file_path.stat().st_size,
         }
         if suffix in {".json", ".jsonl", ".ndjson", ".xml"}:
             result["preview"] = self._text_preview(file_path)
@@ -61,10 +57,9 @@ class DataIngestSkill:
         if suffix in {".jsonl", ".ndjson"}:
             frame = pd.read_json(file_path, lines=True, nrows=nrows)
         elif suffix == ".json":
-            frame = pd.read_json(file_path, nrows=nrows)
+            frame = pd.read_json(file_path).head(nrows)
         elif suffix == ".xml":
-            frame = pd.read_xml(file_path)
-            frame = frame.head(nrows)
+            frame = pd.read_xml(file_path).head(nrows)
         elif suffix == ".csv":
             frame = pd.read_csv(file_path, nrows=nrows)
         elif suffix == ".tsv":
@@ -97,23 +92,29 @@ class DataIngestSkill:
         elif suffix in {".h5", ".hdf", ".hdf5"}:
             frame = pd.read_hdf(file_path).head(nrows)
         elif suffix in {".db", ".sqlite", ".sqlite3"}:
-            table = sheet_name or self._sqlite_tables(file_path)[0]
+            tables = self._sqlite_tables(file_path)
+            table = sheet_name or (tables[0] if tables else "")
             if not table:
                 raise ValueError("SQLite database contains no tables")
             self._validate_sql_identifier(table)
-            frame = pd.read_sql_query(f'SELECT * FROM "{table}" LIMIT {nrows}', sqlite3.connect(file_path))
-        elif suffix in {".sql"}:
+            with sqlite3.connect(file_path) as connection:
+                frame = pd.read_sql_query(f'SELECT * FROM "{table}" LIMIT {nrows}', connection)
+        elif suffix == ".sql":
             raise ValueError("SQL scripts are inspected only in V1; provide a database file for loading")
-        elif suffix in {".avro", ".orc"}:
-            reader = pd.read_avro if suffix == ".avro" else pd.read_orc
-            frame = reader(file_path).head(nrows)
+        elif suffix == ".avro":
+            try:
+                from fastavro import reader
+            except ImportError as exc:
+                raise RuntimeError("Avro support requires fastavro") from exc
+            with file_path.open("rb") as handle:
+                frame = pd.DataFrame.from_records(list(reader(handle))[:nrows])
+        elif suffix == ".orc":
+            frame = pd.read_orc(file_path).head(nrows)
         else:
             raise ValueError(f"No loader registered for {suffix}")
 
         return {
-            "path": str(file_path),
-            "format": self.SUPPORTED_EXTENSIONS[suffix],
-            "rows_returned": len(frame),
+            "path": str(file_path), "format": self.SUPPORTED_EXTENSIONS[suffix], "rows_returned": len(frame),
             "columns": [str(column) for column in frame.columns],
             "dtypes": {str(column): str(dtype) for column, dtype in frame.dtypes.items()},
             "records": frame.where(frame.notna(), None).to_dict(orient="records"),
