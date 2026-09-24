@@ -17,19 +17,15 @@ class TaskRegistry:
         self._handlers: dict[str, TaskHandler] = {}
 
     def register(self, spec: TaskSpec, handler: TaskHandler) -> None:
-        if spec.name in self._specs:
-            raise ValueError(f"Task already registered: {spec.name}")
+        if spec.name in self._specs: raise ValueError(f"Task already registered: {spec.name}")
         self._specs[spec.name] = spec
         self._handlers[spec.name] = handler
 
     def get(self, name: str) -> tuple[TaskSpec, TaskHandler]:
-        try:
-            return self._specs[name], self._handlers[name]
-        except KeyError as exc:
-            raise KeyError(f"Unknown automation task: {name}") from exc
+        try: return self._specs[name], self._handlers[name]
+        except KeyError as exc: raise KeyError(f"Unknown automation task: {name}") from exc
 
-    def list(self) -> tuple[TaskSpec, ...]:
-        return tuple(self._specs.values())
+    def list(self) -> tuple[TaskSpec, ...]: return tuple(self._specs.values())
 
 
 def default_registry() -> TaskRegistry:
@@ -39,14 +35,12 @@ def default_registry() -> TaskRegistry:
     from .excel_advanced import AdvancedExcelSkill
     from .excel_analysis import FullExcelAnalysisSkill
     from .excel_intelligence import ExcelIntelligenceSkill
+    from .excel_native import NativeExcelSkill
     from .excel_skill import ExcelSkill
     from .tasks.data_profiling import profile_data
 
-    ingest = DataIngestSkill()
-    excel = ExcelSkill()
-    advanced = AdvancedExcelSkill()
-    intelligence = ExcelIntelligenceSkill()
-    full_analysis = FullExcelAnalysisSkill()
+    ingest = DataIngestSkill(); excel = ExcelSkill(); advanced = AdvancedExcelSkill()
+    intelligence = ExcelIntelligenceSkill(); full_analysis = FullExcelAnalysisSkill(); native = NativeExcelSkill()
 
     registry.register(TaskSpec("data.inspect", "Inspect a supported dataset file.", "noor.automation.data_ingest:DataIngestSkill.inspect", "analytics", ("read_data",)), lambda c: ingest.inspect(str(c["path"])))
     registry.register(TaskSpec("data.load", "Load a bounded supported dataset into tabular records.", "noor.automation.data_ingest:DataIngestSkill.load", "analytics", ("read_data",)), lambda c: ingest.load(str(c["path"]), sheet_name=str(c["sheet_name"]) if c.get("sheet_name") else None, nrows=int(c.get("nrows", 1000))))
@@ -76,6 +70,9 @@ def default_registry() -> TaskRegistry:
     registry.register(TaskSpec("excel.intelligence.dashboard", "Recommend a dashboard structure from the actual dataset schema.", "noor.automation.excel_intelligence:ExcelIntelligenceSkill.dashboard_spec", "excel", ("read_data", "compute_statistics")), lambda c: intelligence.dashboard_spec(str(c["path"]), c.get("sheet_name")))
     registry.register(TaskSpec("excel.intelligence.formulas", "Search the researched Excel formula catalog.", "noor.automation.excel_intelligence:ExcelIntelligenceSkill.formula_catalog", "excel", ("read_knowledge",)), lambda c: intelligence.formula_catalog(c.get("category"), c.get("query")))
     registry.register(TaskSpec("excel.intelligence.full_analysis", "Run a complete evidence-first Excel analysis package.", "noor.automation.excel_analysis:FullExcelAnalysisSkill.run", "excel", ("read_data", "compute_statistics", "generate_formula", "generate_report")), lambda c: full_analysis.run(str(c["path"]), c.get("sheet_name")))
+
+    registry.register(TaskSpec("excel.native.pivot", "Create a native Excel PivotTable when desktop Excel is available.", "noor.automation.excel_native:NativeExcelSkill.create_pivot_table", "excel", ("write_workbook", "create_pivot")), lambda c: native.create_pivot_table(str(c["path"]), str(c["row_field"]), str(c["value_field"]), c.get("column_field"), str(c.get("aggfunc", "sum")), c.get("sheet_name"), str(c.get("destination_sheet", "Noor_Pivot")), c.get("output_path")))
+    registry.register(TaskSpec("excel.native.chart", "Create a native embedded Excel chart when desktop Excel is available.", "noor.automation.excel_native:NativeExcelSkill.create_chart", "excel", ("write_workbook", "create_chart")), lambda c: native.create_chart(str(c["path"]), str(c["sheet_name"]), str(c["source_range"]), str(c.get("chart_type", "column")), c.get("output_path")))
 
     registry.register(TaskSpec("result.verify", "Structurally verify a previous task output.", "noor.automation.verification:verify_result", "verification", ("verify_result",)), lambda c: verify_result(str(c["capability"]), dict(c.get(c["capability"], {}))))
     return registry
