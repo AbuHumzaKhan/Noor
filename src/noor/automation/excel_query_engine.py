@@ -130,7 +130,7 @@ class ExcelQueryEngine:
         if not text:
             raise ValueError("Question cannot be empty")
 
-        if any(term in lowered for term in ("what can i do", "what can i analyze", "what can i analyse", "what can noor do", "what can you do", "what can i ask", "capabilities")):
+        if any(term in lowered for term in ("what can i do", "what i can do", "what can i do with", "what can i analyse", "what can i analyze", "what can noor do", "what can you do", "what i can ask", "what can i ask", "capabilities")):
             numeric = [str(c) for c in frame.select_dtypes(include="number").columns]
             categorical = [str(c) for c in frame.columns if c not in numeric]
             dates = [str(c) for c in frame.columns if self.skill._is_date_like(frame[c])]
