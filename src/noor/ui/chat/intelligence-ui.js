@@ -15,6 +15,7 @@
     .noor-question-list li { margin: 5px 0; }
     .noor-meta { color: #94a3b8; font-size: 11px; }
     .noor-badge { display:inline-block; margin-left:6px; padding:2px 6px; border-radius:999px; background:rgba(34,197,94,.12); color:#86efac; font-size:10px; }
+    .noor-finding { margin: 5px 0; padding: 7px 9px; border-radius: 8px; background: rgba(15,23,42,.6); }
   `;
   document.head.appendChild(style);
 
@@ -40,6 +41,14 @@
   function renderExecution(execution) {
     const output = execution?.output || {};
     const capability = execution?.capability || "";
+    if (capability === "excel.intelligence.full_analysis") {
+      const profile = output.profile || {};
+      const findings = Array.isArray(output.findings) ? output.findings : [];
+      const questions = Array.isArray(output.questions) ? output.questions : [];
+      const dashboard = output.dashboard || {};
+      const formulas = Array.isArray(output.formula_guidance) ? output.formula_guidance : [];
+      return `<h4>Complete Excel analysis <span class='noor-badge'>computed</span></h4><p><strong>${formatValue(profile.rows)}</strong> rows · <strong>${formatValue(profile.columns)}</strong> columns · <strong>${formatValue(profile.missing_cells)}</strong> missing cells · <strong>${formatValue(profile.duplicate_rows || 0)}</strong> duplicate rows.</p><p><strong>Findings</strong></p>${findings.map(f => `<div class='noor-finding'><strong>${escapeHtml(f.type)}:</strong> ${escapeHtml(f.message)}</div>`).join("")}<p><strong>Suggested questions</strong></p><ol class='noor-question-list'>${questions.slice(0, 8).map(q => `<li>${escapeHtml(q)}</li>`).join("")}</ol><p><strong>Dashboard structure</strong></p><p>KPIs: ${dashboard.kpis?.map(k => escapeHtml(k.name)).join(" · ") || "None detected"}</p><p>Charts: ${dashboard.charts?.map(c => `${escapeHtml(c.type)} — ${escapeHtml(c.purpose)}`).join(" · ") || "None detected"}</p><p><strong>Formula guidance</strong></p>${formulas.slice(0, 6).map(f => `<div class='noor-finding'><strong>${escapeHtml(f.recommended_function)}</strong> <code>${escapeHtml(f.formula)}</code><br><span class='noor-meta'>${escapeHtml(f.reason)}</span></div>`).join("")}<div class='noor-meta'>${escapeHtml(output.verified_basis || "Computed from the attached dataset.")}</div>`;
+    }
     if (capability === "excel.intelligence.answer") {
       return `<h4>Answer <span class='noor-badge'>verified</span></h4><p>${escapeHtml(output.answer || "No answer returned.")}</p><div class='noor-meta'>Calculation: ${escapeHtml(output.calculation || "direct dataset calculation")}</div>${tableHtml(Array.isArray(output.evidence) ? output.evidence : [], 10)}`;
     }
@@ -55,8 +64,7 @@
     }
     if (capability === "excel.intelligence.profile") {
       const columns = Array.isArray(output.column_profile) ? output.column_profile : [];
-      const missing = Number(output.missing_cells || 0);
-      return `<h4>Deep dataset profile <span class='noor-badge'>computed</span></h4><p><strong>${formatValue(output.rows)}</strong> rows · <strong>${formatValue(output.columns)}</strong> columns · <strong>${formatValue(missing)}</strong> missing cells · <strong>${formatValue(output.duplicate_rows || 0)}</strong> duplicate rows.</p><div class='noor-evidence'><table><thead><tr><th>Column</th><th>Type</th><th>Missing</th><th>Unique</th></tr></thead><tbody>${columns.slice(0, 30).map(c => `<tr><td>${escapeHtml(c.name)}</td><td>${escapeHtml(c.dtype)}</td><td>${formatValue(c.missing)} (${formatValue(c.missing_pct)}%)</td><td>${formatValue(c.unique)}</td></tr>`).join("")}</tbody></table></div>`;
+      return `<h4>Deep dataset profile <span class='noor-badge'>computed</span></h4><p><strong>${formatValue(output.rows)}</strong> rows · <strong>${formatValue(output.columns)}</strong> columns · <strong>${formatValue(output.missing_cells)}</strong> missing cells · <strong>${formatValue(output.duplicate_rows || 0)}</strong> duplicate rows.</p><div class='noor-evidence'><table><thead><tr><th>Column</th><th>Type</th><th>Missing</th><th>Unique</th></tr></thead><tbody>${columns.slice(0, 30).map(c => `<tr><td>${escapeHtml(c.name)}</td><td>${escapeHtml(c.dtype)}</td><td>${formatValue(c.missing)} (${formatValue(c.missing_pct)}%)</td><td>${formatValue(c.unique)}</td></tr>`).join("")}</tbody></table></div>`;
     }
     if (capability === "excel.intelligence.dashboard") {
       const kpis = Array.isArray(output.kpis) ? output.kpis : [];
@@ -81,9 +89,7 @@
     const container = document.createElement("div");
     container.className = "noor-intelligence-result";
     container.innerHTML = intelligence.map(renderExecution).filter(Boolean).join("");
-    if (container.innerHTML) {
-      target.querySelector(".workflow-content")?.appendChild(container);
-    }
+    if (container.innerHTML) target.querySelector(".workflow-content")?.appendChild(container);
   }
 
   window.fetch = async (...args) => {
