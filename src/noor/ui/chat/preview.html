@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Noor data workspace and interactive automation assistant">
+  <meta name="description" content="Noor production data analysis workspace">
   <title>Noor — Data Workspace</title>
   <link rel="stylesheet" href="./styles.css">
   <link rel="stylesheet" href="./workspace.css">
@@ -12,83 +12,96 @@
   <main class="preview-shell">
     <section class="data-workspace" aria-label="Noor data workspace">
       <header class="workspace-header">
-        <div>
-          <span class="preview-badge">NOOR DATA WORKSPACE</span>
-          <h1 id="workspaceTitle">Dataset Preview</h1>
-          <p id="workspaceSubtitle">Attach a dataset and Noor will display the real data here. Use the chat to inspect, profile, analyze, clean, transform, or automate it.</p>
+        <div class="workspace-heading">
+          <div class="heading-line">
+            <span class="preview-badge">NOOR DATA WORKSPACE</span>
+            <span class="workspace-state" id="workspaceState"><span class="status-dot"></span><span>Waiting for dataset</span></span>
+          </div>
+          <h1 id="workspaceTitle">Your data, one workspace.</h1>
+          <p id="workspaceSubtitle">Attach a dataset and Noor will turn this page into the working surface for inspection, profiling, analysis, cleaning, transformation, and automation.</p>
         </div>
-        <div class="workspace-state" id="workspaceState"><span class="status-dot"></span><span>Waiting for dataset</span></div>
       </header>
 
       <section class="dataset-empty" id="datasetEmpty" aria-live="polite">
-        <div class="empty-icon">+</div>
+        <div class="empty-icon">⌁</div>
         <h2>No dataset loaded</h2>
-        <p>Click the Noor orb, attach CSV, Excel, JSON, XML, Parquet, SQL/SQLite, statistical, or another supported dataset, and the preview will appear here.</p>
+        <p>Open Noor, attach a real dataset, and the workspace will populate with its actual rows, schema, quality signals, and verified workflow results.</p>
+        <button class="empty-action" id="emptyAttach" type="button">Attach dataset</button>
       </section>
 
       <section class="dataset-view is-hidden" id="datasetView" aria-live="polite">
         <div class="dataset-toolbar">
           <div class="dataset-file-info">
-            <strong id="datasetTitle">Dataset</strong>
+            <div class="file-title-row"><strong id="datasetTitle">Dataset</strong><span class="file-ready">READY</span></div>
             <span id="datasetMeta">—</span>
           </div>
-          <button class="refresh-button" id="refreshPreview" type="button">Refresh preview</button>
+          <div class="toolbar-actions">
+            <button class="toolbar-button" id="refreshPreview" type="button">Refresh</button>
+            <button class="toolbar-button" id="runProfile" type="button">Profile dataset</button>
+          </div>
         </div>
 
         <div class="dataset-stats" id="datasetStats">
-          <article><span>Format</span><strong id="statFormat">—</strong></article>
-          <article><span>Rows shown</span><strong id="statRows">—</strong></article>
-          <article><span>Columns</span><strong id="statColumns">—</strong></article>
-          <article><span>File size</span><strong id="statSize">—</strong></article>
+          <article><span>Rows</span><strong id="statRows">25 preview</strong><small id="statRowsHint">bounded preview</small></article>
+          <article><span>Columns</span><strong id="statColumns">—</strong><small id="statColumnsHint">loaded schema</small></article>
+          <article><span>Missing</span><strong id="statMissing">—</strong><small id="statMissingHint">profile to calculate</small></article>
+          <article><span>Duplicates</span><strong id="statDuplicates">—</strong><small id="statDuplicatesHint">profile to calculate</small></article>
+          <article><span>Format</span><strong id="statFormat">—</strong><small id="statSize">—</small></article>
         </div>
 
-        <div class="table-shell">
-          <div class="table-caption">
-            <div><strong>Live data preview</strong><span id="previewCaption">First 25 rows</span></div>
-            <span class="scroll-hint">Horizontal scroll available</span>
+        <nav class="workspace-tabs" aria-label="Dataset views">
+          <button class="workspace-tab is-active" data-view="data" type="button">Data</button>
+          <button class="workspace-tab" data-view="profile" type="button">Profile</button>
+          <button class="workspace-tab" data-view="quality" type="button">Quality</button>
+          <button class="workspace-tab" data-view="columns" type="button">Columns</button>
+          <button class="workspace-tab" data-view="activity" type="button">Noor activity</button>
+        </nav>
+
+        <section class="workspace-view is-active" id="view-data" data-view-panel="data">
+          <div class="view-header"><div><h2>Data preview</h2><p>Actual records loaded from the attached dataset. Scroll horizontally for wide tables.</p></div><span class="view-note" id="previewCaption">First 25 rows</span></div>
+          <div class="table-shell">
+            <div class="table-caption"><span id="tableSchemaSummary">Schema loading…</span><span class="scroll-hint">Sticky headers · Horizontal scroll</span></div>
+            <div class="table-scroll">
+              <table id="dataTable"><thead></thead><tbody></tbody></table>
+            </div>
           </div>
-          <div class="table-scroll">
-            <table id="dataTable">
-              <thead></thead>
-              <tbody></tbody>
-            </table>
+        </section>
+
+        <section class="workspace-view" id="view-profile" data-view-panel="profile">
+          <div class="view-header"><div><h2>Dataset profile</h2><p>Computed from the full attached dataset when Noor profiles it.</p></div><button class="inline-action" id="profileFromView" type="button">Run profile</button></div>
+          <div class="profile-grid" id="profileSummary">
+            <div class="profile-placeholder"><strong>Profile not run yet</strong><span>Use “Profile dataset” or ask Noor: “Profile my data”.</span></div>
           </div>
-        </div>
+          <div class="column-profile-shell"><div class="section-label">Column profile</div><div class="column-profile" id="columnProfile"></div></div>
+        </section>
+
+        <section class="workspace-view" id="view-quality" data-view-panel="quality">
+          <div class="view-header"><div><h2>Data quality</h2><p>Issues Noor can investigate before you clean or transform the dataset.</p></div></div>
+          <div class="quality-grid" id="qualityGrid"><div class="profile-placeholder"><strong>Quality checks are waiting</strong><span>Run a profile first so Noor can quantify missing values, duplicates, and constant columns.</span></div></div>
+        </section>
+
+        <section class="workspace-view" id="view-columns" data-view-panel="columns">
+          <div class="view-header"><div><h2>Column dictionary</h2><p>Actual schema detected from the loaded preview.</p></div></div>
+          <div class="columns-table-shell"><table class="columns-table"><thead><tr><th>Column</th><th>Type</th><th>Preview uniqueness</th><th>Missing in profile</th></tr></thead><tbody id="columnsTable"></tbody></table></div>
+        </section>
+
+        <section class="workspace-view" id="view-activity" data-view-panel="activity">
+          <div class="view-header"><div><h2>Noor activity</h2><p>Every chat-driven workflow is reflected here so the workspace explains what Noor actually did.</p></div></div>
+          <div class="activity-list" id="activityList"><div class="profile-placeholder"><strong>No workflows yet</strong><span>Open Noor and ask for an inspection, profile, analysis, cleaning, transformation, or Excel operation.</span></div></div>
+        </section>
       </section>
     </section>
   </main>
 
-  <button class="noor-orb" id="noorOrb" type="button" aria-label="Open Noor chat" aria-expanded="false">
-    <span class="orb-core" aria-hidden="true"></span><span class="orb-ring orb-ring-one" aria-hidden="true"></span><span class="orb-ring orb-ring-two" aria-hidden="true"></span><span class="orb-label">Noor</span>
-  </button>
+  <button class="noor-orb" id="noorOrb" type="button" aria-label="Open Noor chat" aria-expanded="false"><span class="orb-core" aria-hidden="true"></span><span class="orb-ring orb-ring-one" aria-hidden="true"></span><span class="orb-ring orb-ring-two" aria-hidden="true"></span><span class="orb-label">Noor</span></button>
 
   <aside class="chat-panel" id="chatPanel" aria-label="Noor chat" aria-hidden="true">
-    <header class="chat-header">
-      <div class="identity"><div class="mini-orb" aria-hidden="true"><span></span></div><div><strong>Noor</strong><span>Unified Automation Orchestra</span></div></div>
-      <button class="icon-button" id="closeChat" type="button" aria-label="Close chat">×</button>
-    </header>
-
+    <header class="chat-header"><div class="identity"><div class="mini-orb" aria-hidden="true"><span></span></div><div><strong>Noor</strong><span>Unified Automation Orchestra</span></div></div><button class="icon-button" id="closeChat" type="button" aria-label="Close chat">×</button></header>
     <div class="status-bar" id="statusBar"><span class="status-dot"></span><span id="statusText">Connecting</span><span class="status-separator">•</span><span>V1 Data + Excel</span></div>
-
-    <div class="file-bar">
-      <label class="file-button" for="datasetFile">Attach Dataset</label>
-      <input id="datasetFile" type="file" accept=".csv,.tsv,.txt,.json,.jsonl,.ndjson,.xml,.xlsx,.xlsm,.xltx,.xltm,.xls,.ods,.parquet,.feather,.pkl,.pickle,.sas7bdat,.xpt,.sav,.zsav,.dta,.arff,.h5,.hdf,.hdf5,.html,.htm,.sql,.db,.sqlite,.sqlite3,.avro,.orc,.dat,.data" hidden>
-      <span id="fileName">No dataset attached</span>
-    </div>
-
-    <div class="messages" id="messages" aria-live="polite">
-      <article class="message assistant-message"><div class="message-avatar">N</div><div class="message-content"><span class="message-role">Noor</span><p>Attach a dataset. I will put the actual data on the workspace and use this chat as the control surface for analysis and automation.</p></div></article>
-    </div>
-
-    <div class="suggestions" id="suggestions" aria-label="Suggested next steps">
-      <button type="button" data-prompt="Inspect my dataset" data-requires-dataset="true" disabled>Inspect dataset</button>
-      <button type="button" data-prompt="Profile my data" data-requires-dataset="true" disabled>Profile data</button>
-      <button type="button" data-prompt="Analyze my data" data-requires-dataset="true" disabled>Analyze data</button>
-      <button type="button" data-prompt="Search this workbook for Revenue" data-requires-dataset="true" disabled>Search workbook</button>
-      <button type="button" data-prompt="Validate formula =SUM(B2:B100)">Validate formula</button>
-    </div>
-
-    <form class="composer" id="chatForm"><label class="sr-only" for="messageInput">Message Noor</label><textarea id="messageInput" rows="1" placeholder="Tell Noor what you want to do..." autocomplete="off"></textarea><button class="send-button" type="submit" aria-label="Send message">↑</button></form>
+    <div class="file-bar"><label class="file-button" for="datasetFile">Attach Dataset</label><input id="datasetFile" type="file" accept=".csv,.tsv,.txt,.json,.jsonl,.ndjson,.xml,.xlsx,.xlsm,.xltx,.xltm,.xls,.ods,.parquet,.feather,.pkl,.pickle,.sas7bdat,.xpt,.sav,.zsav,.dta,.arff,.h5,.hdf,.hdf5,.html,.htm,.sql,.db,.sqlite,.sqlite3,.avro,.orc,.dat,.data" hidden><span id="fileName">No dataset attached</span></div>
+    <div class="messages" id="messages" aria-live="polite"><article class="message assistant-message"><div class="message-avatar">N</div><div class="message-content"><span class="message-role">Noor</span><p>Attach a dataset. I will keep the real data on the workspace and use this chat as the control surface for analysis and automation.</p></div></article></div>
+    <div class="suggestions" id="suggestions" aria-label="Suggested next steps"><button type="button" data-prompt="Inspect my dataset" data-requires-dataset="true" disabled>Inspect</button><button type="button" data-prompt="Profile my data" data-requires-dataset="true" disabled>Profile</button><button type="button" data-prompt="Analyze my data" data-requires-dataset="true" disabled>Analyze</button><button type="button" data-prompt="Search this workbook for Revenue" data-requires-dataset="true" disabled>Search</button><button type="button" data-prompt="Validate formula =SUM(B2:B100)">Formula</button></div>
+    <form class="composer" id="chatForm"><label class="sr-only" for="messageInput">Message Noor</label><textarea id="messageInput" rows="1" placeholder="Ask Noor what to do with this data…" autocomplete="off"></textarea><button class="send-button" type="submit" aria-label="Send message">↑</button></form>
   </aside>
   <script src="./app.js" defer></script>
 </body>
