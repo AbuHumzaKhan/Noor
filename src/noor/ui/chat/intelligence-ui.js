@@ -16,6 +16,8 @@
     .noor-meta { color: #94a3b8; font-size: 11px; }
     .noor-badge { display:inline-block; margin-left:6px; padding:2px 6px; border-radius:999px; background:rgba(34,197,94,.12); color:#86efac; font-size:10px; }
     .noor-finding { margin: 5px 0; padding: 7px 9px; border-radius: 8px; background: rgba(15,23,42,.6); }
+    .noor-capability-list { margin: 8px 0 0 18px; padding: 0; }
+    .noor-capability-list li { margin: 5px 0; }
   `;
   document.head.appendChild(style);
 
@@ -50,6 +52,11 @@
       return `<h4>Complete Excel analysis <span class='noor-badge'>computed</span></h4><p><strong>${formatValue(profile.rows)}</strong> rows · <strong>${formatValue(profile.columns)}</strong> columns · <strong>${formatValue(profile.missing_cells)}</strong> missing cells · <strong>${formatValue(profile.duplicate_rows || 0)}</strong> duplicate rows.</p><p><strong>Findings</strong></p>${findings.map(f => `<div class='noor-finding'><strong>${escapeHtml(f.type)}:</strong> ${escapeHtml(f.message)}</div>`).join("")}<p><strong>Suggested questions</strong></p><ol class='noor-question-list'>${questions.slice(0, 8).map(q => `<li>${escapeHtml(q)}</li>`).join("")}</ol><p><strong>Dashboard structure</strong></p><p>KPIs: ${dashboard.kpis?.map(k => escapeHtml(k.name)).join(" · ") || "None detected"}</p><p>Charts: ${dashboard.charts?.map(c => `${escapeHtml(c.type)} — ${escapeHtml(c.purpose)}`).join(" · ") || "None detected"}</p><p><strong>Formula guidance</strong></p>${formulas.slice(0, 6).map(f => `<div class='noor-finding'><strong>${escapeHtml(f.recommended_function)}</strong> <code>${escapeHtml(f.formula)}</code><br><span class='noor-meta'>${escapeHtml(f.reason)}</span></div>`).join("")}<div class='noor-meta'>${escapeHtml(output.verified_basis || "Computed from the attached dataset.")}</div>`;
     }
     if (capability === "excel.intelligence.answer") {
+      const capabilityList = Array.isArray(output.capabilities) ? output.capabilities : [];
+      const commands = Array.isArray(output.suggested_commands) ? output.suggested_commands : [];
+      if (capabilityList.length) {
+        return `<h4>What you can do with this dataset <span class='noor-badge'>available</span></h4><p>${escapeHtml(output.answer || "")}</p><ul class='noor-capability-list'>${capabilityList.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul><p><strong>Try asking:</strong></p><ol class='noor-question-list'>${commands.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ol><div class='noor-meta'>${escapeHtml(output.basis || "Computed from the attached dataset and registered Noor capabilities.")}</div>`;
+      }
       return `<h4>Answer <span class='noor-badge'>verified</span></h4><p>${escapeHtml(output.answer || "No answer returned.")}</p><div class='noor-meta'>Calculation: ${escapeHtml(output.calculation || "direct dataset calculation")}</div>${tableHtml(Array.isArray(output.evidence) ? output.evidence : [], 10)}`;
     }
     if (capability === "excel.intelligence.formula") {
