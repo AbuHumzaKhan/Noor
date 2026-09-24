@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "noor"
-version = "0.3.0"
+version = "0.4.0"
 description = "Noor — an autonomous, safety-aware AI development and analytics automation partner"
 requires-python = ">=3.12"
 dependencies = []
@@ -22,6 +22,7 @@ analytics = [
     "scipy>=1.13",
     "fastavro>=1.9",
 ]
+native-excel = ["pywin32>=306"]
 dev = ["pytest>=8", "ruff>=0.8", "mypy>=1.13"]
 
 [project.scripts]
