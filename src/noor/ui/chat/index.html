@@ -35,18 +35,18 @@
     </div>
 
     <div class="messages" id="messages" aria-live="polite">
-      <article class="message assistant-message"><div class="message-avatar">N</div><div class="message-content"><span class="message-role">Noor</span><p>I’m connected to the V1 Orchestra. Attach a dataset or ask me for an Excel operation. I’ll show the task graph, provider, execution status, and verification result.</p></div></article>
+      <article class="message assistant-message"><div class="message-avatar">N</div><div class="message-content"><span class="message-role">Noor</span><p>I’m connected to the V1 Orchestra. Attach a dataset or ask me for an Excel formula operation. I’ll show the task graph, provider, execution status, and verification result.</p></div></article>
     </div>
 
     <div class="suggestions" id="suggestions" aria-label="Suggested next steps">
-      <button type="button" data-prompt="Inspect my dataset">Inspect dataset</button>
-      <button type="button" data-prompt="Profile my data">Profile data</button>
-      <button type="button" data-prompt="Analyze my data">Analyze data</button>
-      <button type="button" data-prompt="Search this workbook for Revenue">Search workbook</button>
+      <button type="button" data-prompt="Inspect my dataset" data-requires-dataset="true" disabled>Inspect dataset</button>
+      <button type="button" data-prompt="Profile my data" data-requires-dataset="true" disabled>Profile data</button>
+      <button type="button" data-prompt="Analyze my data" data-requires-dataset="true" disabled>Analyze data</button>
+      <button type="button" data-prompt="Search this workbook for Revenue" data-requires-dataset="true" disabled>Search workbook</button>
       <button type="button" data-prompt="Validate formula =SUM(B2:B100)">Validate formula</button>
     </div>
 
-    <form class="composer" id="chatForm"><label class="sr-only" for="messageInput">Message Noor</label><textarea id="messageInput" rows="1" placeholder="Tell Noor what you want to do..." autocomplete="off"></textarea><button class="send-button" type="submit" aria-label="Send message">↑</button></form>
+    <form class="composer" id="chatForm"><label class="sr-only" for="messageInput">Message Noor</label><textarea id="messageInput" rows="1" placeholder="Attach a dataset or tell Noor what you want to do..." autocomplete="off"></textarea><button class="send-button" type="submit" aria-label="Send message">↑</button></form>
   </aside>
   <script src="./app.js" defer></script>
 </body>
