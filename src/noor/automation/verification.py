@@ -45,6 +45,12 @@ def verify_result(capability: str, output: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(output.get("questions"), list): errors.append("Full analysis must include generated questions")
         if not isinstance(output.get("findings"), list): errors.append("Full analysis must include findings")
         if not isinstance(output.get("dashboard"), dict): errors.append("Full analysis must include a dashboard specification")
+    elif capability == "excel.native.pivot":
+        if output.get("native") is not True: errors.append("Native PivotTable execution must report native=true")
+        if not output.get("output"): errors.append("Native PivotTable must report an output workbook")
+    elif capability == "excel.native.chart":
+        if output.get("native") is not True: errors.append("Native chart execution must report native=true")
+        if not output.get("output"): errors.append("Native chart must report an output workbook")
     elif capability == "data.profile" and not output:
         errors.append("Profile output cannot be empty")
 
