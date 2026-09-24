@@ -1,0 +1,19 @@
+version: 1
+policy:
+  default_mode: propose_then_execute
+  require_confirmation_for:
+    - destructive_file_operations
+    - external_side_effects
+    - secret_access
+    - credential_changes
+    - irreversible_git_operations
+  never_log:
+    - api_keys
+    - access_tokens
+    - passwords
+    - private_keys
+  principles:
+    - least_privilege
+    - reversible_changes
+    - explicit_verification
+    - auditability
