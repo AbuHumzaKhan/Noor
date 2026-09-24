@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
+from .automation.data_ingest import DataIngestSkill
 from .automation.orchestra import TaskGraph, UnifiedOrchestra
 from .automation.registry import default_registry
 from .automation.v1_planner import V1Planner
@@ -31,7 +32,8 @@ class NoorApplication:
     def __init__(self, upload_dir: Path | None = None) -> None:
         self.planner = V1Planner()
         self.registry = default_registry()
-        self.upload_dir = upload_dir or Path.cwd() / ".noor_uploads"
+        self.ingest = DataIngestSkill()
+        self.upload_dir = (upload_dir or Path.cwd() / ".noor_uploads").resolve()
         self.upload_dir.mkdir(parents=True, exist_ok=True)
 
     def execute(self, request: str, path: str | None = None, sheet_name: str | None = None) -> dict[str, Any]:
@@ -55,6 +57,32 @@ class NoorApplication:
             "success": all(item.status == "success" for item in executions),
             "next_step": self._next_step(executions),
         }
+
+    def preview_dataset(self, path: str, sheet_name: str | None = None, nrows: int = 25) -> dict[str, Any]:
+        """Return a bounded, UI-safe preview for a dataset uploaded to Noor."""
+        file_path = self._validate_uploaded_path(path)
+        loaded = self.ingest.load(str(file_path), sheet_name=sheet_name, nrows=nrows)
+        return {
+            "filename": file_path.name,
+            "format": loaded["format"],
+            "extension": file_path.suffix.lower(),
+            "bytes": file_path.stat().st_size,
+            "rows_returned": loaded["rows_returned"],
+            "columns": loaded["columns"],
+            "dtypes": loaded["dtypes"],
+            "records": loaded["records"],
+            "preview_limit": nrows,
+        }
+
+    def _validate_uploaded_path(self, path: str) -> Path:
+        if not path:
+            raise ValueError("No dataset is attached")
+        file_path = Path(path).expanduser().resolve()
+        try:
+            file_path.relative_to(self.upload_dir)
+        except ValueError as exc:
+            raise ValueError("Dataset preview is only available for files uploaded through Noor") from exc
+        return self.ingest.validate_path(str(file_path))
 
     def save_upload(self, filename: str, content: bytes) -> dict[str, str | int]:
         suffix = Path(filename).suffix.lower()
@@ -140,7 +168,8 @@ class NoorRequestHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         try:
-            if urlparse(self.path).path == "/api/chat":
+            path = urlparse(self.path).path
+            if path == "/api/chat":
                 payload = json.loads(self._read_body().decode("utf-8"))
                 result = self.app.execute(
                     str(payload.get("message", "")),
@@ -149,7 +178,15 @@ class NoorRequestHandler(BaseHTTPRequestHandler):
                 )
                 self._send_json(result)
                 return
-            if urlparse(self.path).path == "/api/upload":
+            if path == "/api/preview":
+                payload = json.loads(self._read_body().decode("utf-8"))
+                result = self.app.preview_dataset(
+                    str(payload.get("path", "")),
+                    str(payload["sheet_name"]) if payload.get("sheet_name") else None,
+                )
+                self._send_json(result)
+                return
+            if path == "/api/upload":
                 result = self._parse_upload(self._read_body())
                 self._send_json(result, HTTPStatus.CREATED)
                 return
