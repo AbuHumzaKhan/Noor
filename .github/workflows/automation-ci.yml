@@ -22,7 +22,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install package and development dependencies
-        run: python -m pip install --upgrade pip && pip install -e '.[dev]'
+        run: python -m pip install --upgrade pip && pip install -e '.[analytics,dev]'
 
       - name: Lint
         run: ruff check .
