@@ -3,7 +3,6 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from .data_ingest import DataIngestSkill
 from .orchestra import TaskGraph, TaskNode
 
 
@@ -31,11 +30,7 @@ class V1Planner:
 
     def plan_data_profile(self, path: str) -> TaskGraph:
         self._require_path(path)
-        return TaskGraph(nodes=[
-            TaskNode("data.inspect", "data.inspect", {"path": path}),
-            TaskNode("data.profile", "data.profile", {"path": path}, ("data.inspect",)),
-            self._verified("data.profile", "data.profile"),
-        ])
+        return TaskGraph(nodes=[TaskNode("data.inspect", "data.inspect", {"path": path}), TaskNode("data.profile", "data.profile", {"path": path}, ("data.inspect",)), self._verified("data.profile", "data.profile")])
 
     def plan_excel_inspection(self, path: str) -> TaskGraph:
         self._require_path(path)
@@ -48,19 +43,13 @@ class V1Planner:
         return TaskGraph(nodes=[TaskNode("excel.read", "excel.read", {"path": path, "sheet_name": sheet_name}), self._verified("excel.read", "excel.read")])
 
     def plan_excel_formula(self, operation: str, range_ref: str, *, criteria: str | None = None, true_value: object = None, false_value: object = None) -> TaskGraph:
-        return TaskGraph(nodes=[TaskNode("excel.formula.generate", "excel.formula.generate", {
-            "operation": operation, "range_ref": range_ref, "criteria": criteria,
-            "true_value": true_value, "false_value": false_value,
-        }), self._verified("excel.formula.generate", "excel.formula.generate")])
+        return TaskGraph(nodes=[TaskNode("excel.formula.generate", "excel.formula.generate", {"operation": operation, "range_ref": range_ref, "criteria": criteria, "true_value": true_value, "false_value": false_value}), self._verified("excel.formula.generate", "excel.formula.generate")])
 
     def plan_excel_transform(self, path: str, sheet_name: str, operation: str, output_path: str | None = None, *, column: str | None = None, value: object = None, new_name: str | None = None) -> TaskGraph:
         self._require_path(path)
         if not sheet_name.strip():
             raise ValueError("A worksheet name is required for Excel transformations")
-        return TaskGraph(nodes=[TaskNode("excel.transform", "excel.transform", {
-            "path": path, "sheet_name": sheet_name, "operation": operation,
-            "output_path": output_path, "column": column, "value": value, "new_name": new_name,
-        }), self._verified("excel.transform", "excel.transform")])
+        return TaskGraph(nodes=[TaskNode("excel.transform", "excel.transform", {"path": path, "sheet_name": sheet_name, "operation": operation, "output_path": output_path, "column": column, "value": value, "new_name": new_name}), self._verified("excel.transform", "excel.transform")])
 
     def plan_excel_advanced(self, capability: str, inputs: dict[str, object]) -> TaskGraph:
         self._require_path(str(inputs.get("path", "")))
@@ -78,25 +67,17 @@ class V1Planner:
             if not query:
                 raise ValueError("Tell me what text to search for in the workbook")
             return self.plan_excel_advanced("excel.search", {"path": path, "query": query, "sheet_name": sheet_name})
-
         if is_excel and "freeze" in text:
-            cell = self._extract_cell(request) or "A2"
-            return self.plan_excel_advanced("excel.freeze", {"path": path, "sheet_name": sheet_name or "Sheet1", "cell": cell})
-
+            return self.plan_excel_advanced("excel.freeze", {"path": path, "sheet_name": sheet_name or "Sheet1", "cell": self._extract_cell(request) or "A2"})
         if is_excel and any(term in text for term in ("filter", "autofilter", "auto filter")):
             cell_range = self._extract_range(request)
             if not cell_range:
                 raise ValueError("Provide a filter range such as A1:F100")
             return self.plan_excel_advanced("excel.filter", {"path": path, "sheet_name": sheet_name or "Sheet1", "cell_range": cell_range})
-
         if is_excel and "sort" in text:
-            column = self._extract_column(request) or "A"
-            return self.plan_excel_advanced("excel.sort", {"path": path, "sheet_name": sheet_name or "Sheet1", "column": column, "descending": any(term in text for term in ("descending", "largest", "highest"))})
-
+            return self.plan_excel_advanced("excel.sort", {"path": path, "sheet_name": sheet_name or "Sheet1", "column": self._extract_column(request) or "A", "descending": any(term in text for term in ("descending", "largest", "highest"))})
         if is_excel and "create sheet" in text:
-            name = self._extract_after(request, ("create sheet", "create worksheet")) or "NewSheet"
-            return self.plan_excel_advanced("excel.create_sheet", {"path": path, "sheet_name": name})
-
+            return self.plan_excel_advanced("excel.create_sheet", {"path": path, "sheet_name": self._extract_after(request, ("create sheet", "create worksheet")) or "NewSheet"})
         if is_excel and "rename sheet" in text:
             match = re.search(r"rename\s+(?:sheet|worksheet)\s+(.+?)\s+to\s+(.+)$", request, re.IGNORECASE)
             if not match:
@@ -110,32 +91,19 @@ class V1Planner:
             return self.plan_excel_advanced("excel.formula.explain", {"formula": formula_match.group(0)})
 
         if any(term in text for term in ("analyze", "analysis", "profile", "profiling", "trend", "insight")):
-            if is_excel:
-                return self.plan_excel_analysis(path or "", sheet_name)
-            return self.plan_data_profile(path or "")
-
+            return self.plan_excel_analysis(path or "", sheet_name) if is_excel else self.plan_data_profile(path or "")
         if is_excel and any(term in text for term in ("formula", "sum", "average", "avg", "count", "minimum", "maximum")):
-            operation = self._formula_operation(text)
             range_ref = self._extract_range(request)
             if not range_ref:
                 raise ValueError("I need a cell range, such as B2:B100, to generate the Excel formula")
-            return self.plan_excel_formula(operation, range_ref)
-
+            return self.plan_excel_formula(self._formula_operation(text), range_ref)
         if is_excel and any(term in text for term in ("clean", "duplicate", "fill blank", "rename header")):
             operation = self._transform_operation(text)
-            value = self._extract_fill_value(request) if operation == "fill_blank" else None
-            new_name = self._extract_rename_value(request) if operation == "rename_header" else None
-            column = self._extract_column(request) if operation in {"fill_blank", "rename_header"} else None
-            return self.plan_excel_transform(path or "", sheet_name or "", operation, column=column, value=value, new_name=new_name)
-
+            return self.plan_excel_transform(path or "", sheet_name or "", operation, column=self._extract_column(request) if operation in {"fill_blank", "rename_header"} else None, value=self._extract_fill_value(request) if operation == "fill_blank" else None, new_name=self._extract_rename_value(request) if operation == "rename_header" else None)
         if is_excel and any(term in text for term in ("read", "show", "inspect", "open", "workbook", "worksheet")):
-            if sheet_name:
-                return self.plan_excel_read(path or "", sheet_name)
-            return self.plan_excel_inspection(path or "")
-
+            return self.plan_excel_read(path or "", sheet_name) if sheet_name else self.plan_excel_inspection(path or "")
         if path and any(term in text for term in ("inspect", "profile", "analyze", "load", "read", "show")):
             return self.plan_data_profile(path)
-
         raise ValueError("Unsupported V1 request. Attach a dataset and ask Noor to inspect, profile, analyze, clean, or automate it.")
 
     @staticmethod
