@@ -33,12 +33,23 @@ class TaskRegistry:
 
 
 def default_registry() -> TaskRegistry:
-    """Build the safe default registry with analytics and Excel capabilities."""
+    """Build the safe default registry with analytics, ingestion and Excel capabilities."""
     registry = TaskRegistry()
+    from .data_ingest import DataIngestSkill
     from .excel_skill import ExcelSkill
     from .tasks.data_profiling import profile_data
 
+    ingest = DataIngestSkill()
     excel = ExcelSkill()
+    registry.register(TaskSpec("data.inspect", "Inspect a supported dataset file.",
+                               "noor.automation.data_ingest:DataIngestSkill.inspect", "analytics",
+                               ("read_data",)), ingest.inspect)
+    registry.register(TaskSpec("data.load", "Load a bounded supported dataset into tabular records.",
+                               "noor.automation.data_ingest:DataIngestSkill.load", "analytics",
+                               ("read_data",)),
+                      lambda c: ingest.load(str(c["path"]),
+                                            sheet_name=str(c["sheet_name"]) if c.get("sheet_name") else None,
+                                            nrows=int(c.get("nrows", 1000))))
     registry.register(TaskSpec("data.profile", "Profile a tabular dataset.",
                                "noor.automation.tasks.data_profiling:profile_data", "analytics",
                                ("read_data", "compute_statistics")), profile_data)
