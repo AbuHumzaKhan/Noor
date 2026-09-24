@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -34,7 +35,9 @@ class TaskGraph:
         for node in self.nodes:
             missing = set(node.depends_on) - ids
             if missing:
-                raise ValueError(f"Task {node.id} depends on unknown nodes: {sorted(missing)}")
+                raise ValueError(
+                    f"Task {node.id} depends on unknown nodes: {sorted(missing)}"
+                )
 
 
 class UnifiedOrchestra:
@@ -57,7 +60,11 @@ class UnifiedOrchestra:
             raise ValueError(f"Provider already registered: {capability}")
         self._providers[capability] = handler
 
-    def execute(self, graph: TaskGraph, initial_context: dict[str, Any] | None = None) -> list[TaskExecution]:
+    def execute(
+        self,
+        graph: TaskGraph,
+        initial_context: dict[str, Any] | None = None,
+    ) -> list[TaskExecution]:
         graph.validate()
         context = dict(initial_context or {})
         completed: set[str] = set()
@@ -65,17 +72,30 @@ class UnifiedOrchestra:
 
         while len(completed) < len(graph.nodes):
             ready = [
-                node for node in graph.nodes
-                if node.id not in completed and set(node.depends_on).issubset(completed)
+                node
+                for node in graph.nodes
+                if node.id not in completed
+                and set(node.depends_on).issubset(completed)
             ]
             if not ready:
-                raise ValueError("Task graph contains a dependency cycle or unresolved dependency")
+                raise ValueError(
+                    "Task graph contains a dependency cycle or unresolved dependency"
+                )
 
             for node in ready:
                 handler = self._providers.get(node.capability)
                 if handler is None:
-                    executions.append(TaskExecution(node.id, node.capability, "blocked", errors=["No provider registered"]))
-                    raise RuntimeError(f"No provider registered for capability: {node.capability}")
+                    executions.append(
+                        TaskExecution(
+                            node.id,
+                            node.capability,
+                            "blocked",
+                            errors=["No provider registered"],
+                        )
+                    )
+                    raise RuntimeError(
+                        f"No provider registered for capability: {node.capability}"
+                    )
 
                 payload = dict(context)
                 payload.update(node.inputs)
@@ -90,7 +110,7 @@ class UnifiedOrchestra:
                         context[node.id] = output
                         completed.add(node.id)
                         break
-                    except Exception as exc:  # provider boundary: convert failures into structured state
+                    except Exception as exc:  # noqa: BLE001 - provider boundary
                         execution.errors.append(str(exc))
                 executions.append(execution)
                 if execution.status != "success":
