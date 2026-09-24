@@ -34,74 +34,48 @@ class TaskRegistry:
 
 def default_registry() -> TaskRegistry:
     """Build the safe default registry with analytics and Excel capabilities."""
-
     registry = TaskRegistry()
     from .excel_skill import ExcelSkill
     from .tasks.data_profiling import profile_data
 
     excel = ExcelSkill()
-
-    registry.register(
-        TaskSpec(
-            name="data.profile",
-            description="Profile a tabular dataset for schema, missingness, uniqueness, and distributions.",
-            handler="noor.automation.tasks.data_profiling:profile_data",
-            category="analytics",
-            capabilities=("read_data", "compute_statistics"),
-        ),
-        profile_data,
-    )
-    registry.register(
-        TaskSpec(
-            name="excel.inspect",
-            description="Inspect an Excel workbook and return worksheet dimensions.",
-            handler="noor.automation.excel_skill:ExcelSkill.inspect",
-            category="excel",
-            capabilities=("read_workbook",),
-        ),
-        excel.inspect,
-    )
-    registry.register(
-        TaskSpec(
-            name="excel.read",
-            description="Read a bounded worksheet region without executing workbook macros.",
-            handler="noor.automation.excel_skill:ExcelSkill.read_sheet",
-            category="excel",
-            capabilities=("read_workbook", "read_data"),
-        ),
-        lambda context: excel.read_sheet(
-            str(context["path"]),
-            str(context["sheet_name"]),
-            int(context.get("max_rows", ExcelSkill.DEFAULT_MAX_ROWS)),
-            int(context.get("max_columns", ExcelSkill.DEFAULT_MAX_COLUMNS)),
-        ),
-    )
-    registry.register(
-        TaskSpec(
-            name="excel.write",
-            description="Write explicit cell values or formulas to an Excel workbook.",
-            handler="noor.automation.excel_skill:ExcelSkill.write_cells",
-            category="excel",
-            capabilities=("write_workbook",),
-        ),
-        lambda context: excel.write_cells(
-            str(context["path"]),
-            str(context["sheet_name"]),
-            dict(context["cells"]),
-            str(context["output_path"]) if context.get("output_path") else None,
-        ),
-    )
-    registry.register(
-        TaskSpec(
-            name="result.verify",
-            description="Structurally verify the output of a previous automation task.",
-            handler="noor.automation.verification:verify_result",
-            category="verification",
-            capabilities=("verify_result",),
-        ),
-        lambda context: verify_result(
-            str(context["capability"]),
-            dict(context.get(context["capability"], {})),
-        ),
-    )
+    registry.register(TaskSpec("data.profile", "Profile a tabular dataset.",
+                               "noor.automation.tasks.data_profiling:profile_data", "analytics",
+                               ("read_data", "compute_statistics")), profile_data)
+    registry.register(TaskSpec("excel.inspect", "Inspect an Excel workbook.",
+                               "noor.automation.excel_skill:ExcelSkill.inspect", "excel",
+                               ("read_workbook",)), excel.inspect)
+    registry.register(TaskSpec("excel.read", "Read a bounded worksheet region.",
+                               "noor.automation.excel_skill:ExcelSkill.read_sheet", "excel",
+                               ("read_workbook", "read_data")),
+                      lambda c: excel.read_sheet(str(c["path"]), str(c["sheet_name"]),
+                                                 int(c.get("max_rows", ExcelSkill.DEFAULT_MAX_ROWS)),
+                                                 int(c.get("max_columns", ExcelSkill.DEFAULT_MAX_COLUMNS))))
+    registry.register(TaskSpec("excel.write", "Write explicit cell values or formulas.",
+                               "noor.automation.excel_skill:ExcelSkill.write_cells", "excel",
+                               ("write_workbook",)),
+                      lambda c: excel.write_cells(str(c["path"]), str(c["sheet_name"]), dict(c["cells"]),
+                                                  str(c["output_path"]) if c.get("output_path") else None))
+    registry.register(TaskSpec("excel.formula.generate", "Generate an allow-listed Excel formula.",
+                               "noor.automation.excel_skill:ExcelSkill.generate_formula", "excel",
+                               ("generate_formula",)),
+                      lambda c: excel.generate_formula(str(c["operation"]), str(c["range_ref"]),
+                                                       criteria=c.get("criteria"), true_value=c.get("true_value"),
+                                                       false_value=c.get("false_value")))
+    registry.register(TaskSpec("excel.transform", "Apply a deterministic workbook transformation.",
+                               "noor.automation.excel_skill:ExcelSkill.transform_sheet", "excel",
+                               ("write_workbook", "transform_data")),
+                      lambda c: excel.transform_sheet(str(c["path"]), str(c["sheet_name"]),
+                                                      str(c["operation"]),
+                                                      str(c["output_path"]) if c.get("output_path") else None,
+                                                      column=c.get("column"), value=c.get("value"),
+                                                      new_name=c.get("new_name")))
+    registry.register(TaskSpec("excel.analyze", "Calculate descriptive analytics for a worksheet.",
+                               "noor.automation.excel_skill:ExcelSkill.analyze_sheet", "excel",
+                               ("read_data", "compute_statistics")),
+                      lambda c: excel.analyze_sheet(str(c["path"]), str(c["sheet_name"])))
+    registry.register(TaskSpec("result.verify", "Structurally verify a previous task output.",
+                               "noor.automation.verification:verify_result", "verification",
+                               ("verify_result",)),
+                      lambda c: verify_result(str(c["capability"]), dict(c.get(c["capability"], {}))))
     return registry
