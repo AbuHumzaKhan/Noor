@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 
 class ExcelSkill:
@@ -11,7 +11,12 @@ class ExcelSkill:
     operations should be added behind explicit capabilities and verification.
     """
 
-    SUPPORTED_EXTENSIONS = {".xlsx", ".xlsm", ".xltx", ".xltm"}
+    SUPPORTED_EXTENSIONS: ClassVar[set[str]] = {
+        ".xlsx",
+        ".xlsm",
+        ".xltx",
+        ".xltm",
+    }
 
     def inspect(self, path: str) -> dict[str, Any]:
         file_path = Path(path)
@@ -28,11 +33,13 @@ class ExcelSkill:
         workbook = openpyxl.load_workbook(file_path, read_only=True, data_only=False)
         sheets: list[dict[str, Any]] = []
         for worksheet in workbook.worksheets:
-            sheets.append({
-                "name": worksheet.title,
-                "rows": worksheet.max_row,
-                "columns": worksheet.max_column,
-                "dimensions": worksheet.calculate_dimension(),
-            })
+            sheets.append(
+                {
+                    "name": worksheet.title,
+                    "rows": worksheet.max_row,
+                    "columns": worksheet.max_column,
+                    "dimensions": worksheet.calculate_dimension(),
+                }
+            )
         workbook.close()
         return {"path": str(file_path), "sheets": sheets}
