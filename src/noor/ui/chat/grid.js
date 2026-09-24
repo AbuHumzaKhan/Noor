@@ -42,8 +42,7 @@
     const headerRow = thead.querySelector("tr");
     if (!headerRow) return;
 
-    const existingCorner = headerRow.querySelector(".grid-corner");
-    if (!existingCorner) {
+    if (!headerRow.querySelector(".grid-corner")) {
       const corner = document.createElement("th");
       corner.className = "grid-corner";
       corner.scope = "col";
@@ -55,10 +54,13 @@
     Array.from(headerRow.children).forEach((cell, index) => {
       if (cell.classList.contains("grid-corner")) return;
       const columnIndex = index - 1;
+      const columnName = cell.dataset.columnName || cell.textContent.trim();
+      const dtype = cell.dataset.dtype || cell.title || "unknown";
       cell.dataset.columnIndex = String(columnIndex);
+      cell.dataset.columnName = columnName;
+      cell.dataset.dtype = dtype;
       cell.classList.add("grid-column-header");
-      const columnName = cell.textContent.trim();
-      const dtype = cell.title || "unknown";
+      cell.title = dtype;
       cell.innerHTML = `<span class="grid-letter">${columnLabel(columnIndex)}</span><span class="grid-name">${escapeHtml(columnName)}</span><span class="grid-type">${escapeHtml(dtype)}</span>`;
     });
 
@@ -81,7 +83,7 @@
         cell.tabIndex = 0;
         cell.dataset.columnIndex = String(columnIndex);
         cell.dataset.rowNumber = String(rowIndex);
-        cell.dataset.columnName = header?.querySelector(".grid-name")?.textContent || `Column ${columnIndex + 1}`;
+        cell.dataset.columnName = header?.dataset.columnName || `Column ${columnIndex + 1}`;
       });
     });
   }
@@ -128,10 +130,10 @@
     const cell = event.target.closest(".grid-cell");
     if (!cell) return;
     const movement = {
-      ArrowUp: [ -1, 0 ],
-      ArrowDown: [ 1, 0 ],
-      ArrowLeft: [ 0, -1 ],
-      ArrowRight: [ 0, 1 ],
+      ArrowUp: [-1, 0],
+      ArrowDown: [1, 0],
+      ArrowLeft: [0, -1],
+      ArrowRight: [0, 1],
     }[event.key];
 
     if (movement) {
