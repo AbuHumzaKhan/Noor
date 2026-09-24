@@ -45,7 +45,8 @@ def default_registry() -> TaskRegistry:
     advanced = AdvancedExcelSkill()
     registry.register(TaskSpec("data.inspect", "Inspect a supported dataset file.",
                                "noor.automation.data_ingest:DataIngestSkill.inspect", "analytics",
-                               ("read_data",)), ingest.inspect)
+                               ("read_data",)),
+                      lambda c: ingest.inspect(str(c["path"])))
     registry.register(TaskSpec("data.load", "Load a bounded supported dataset into tabular records.",
                                "noor.automation.data_ingest:DataIngestSkill.load", "analytics",
                                ("read_data",)),
@@ -57,7 +58,8 @@ def default_registry() -> TaskRegistry:
                                ("read_data", "compute_statistics")), profile_data)
     registry.register(TaskSpec("excel.inspect", "Inspect an Excel workbook.",
                                "noor.automation.excel_skill:ExcelSkill.inspect", "excel",
-                               ("read_workbook",)), excel.inspect)
+                               ("read_workbook",)),
+                      lambda c: excel.inspect(str(c["path"])))
     registry.register(TaskSpec("excel.read", "Read a bounded worksheet region.",
                                "noor.automation.excel_skill:ExcelSkill.read_sheet", "excel",
                                ("read_workbook", "read_data")),
