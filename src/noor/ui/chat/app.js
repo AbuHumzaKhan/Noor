@@ -5,25 +5,11 @@ const form = document.getElementById("chatForm");
 const input = document.getElementById("messageInput");
 const messages = document.getElementById("messages");
 const suggestions = document.getElementById("suggestions");
+const excelFile = document.getElementById("excelFile");
+const fileName = document.getElementById("fileName");
+const statusText = document.getElementById("statusText");
 
-const suggestionMap = [
-  {
-    match: /excel|spreadsheet|workbook|xlsx|xlsm/i,
-    text: "I can start with workbook inspection, then profile the data. Next step: connect the selected file to the Excel skill."
-  },
-  {
-    match: /profile|missing|duplicate|quality|data/i,
-    text: "Next step: profile the dataset first, then identify quality issues before analysis or transformation."
-  },
-  {
-    match: /analy[sz]e|trend|sales|report|insight/i,
-    text: "Next step: build an analysis plan, identify the relevant fields, validate the data, then calculate and verify the requested insights."
-  },
-  {
-    match: /formula|sum|average|count/i,
-    text: "Next step: inspect the worksheet structure and generate a formula against the actual headers and ranges."
-  }
-];
+let selectedExcelPath = null;
 
 function openChat() {
   panel.classList.add("is-open");
@@ -44,7 +30,6 @@ function closePanel() {
 function appendMessage(text, role = "assistant") {
   const article = document.createElement("article");
   article.className = `message ${role === "user" ? "user-message" : "assistant-message"}`;
-
   if (role === "user") {
     article.innerHTML = `<div class="message-content"><p>${escapeHtml(text)}</p></div>`;
   } else {
@@ -55,6 +40,39 @@ function appendMessage(text, role = "assistant") {
         <p>${escapeHtml(text)}</p>
       </div>`;
   }
+  messages.appendChild(article);
+  messages.scrollTop = messages.scrollHeight;
+}
+
+function appendWorkflow(result) {
+  const article = document.createElement("article");
+  article.className = "message assistant-message workflow-message";
+  const plan = result.plan.map((node) =>
+    `<li><strong>${escapeHtml(node.id)}</strong><span>${escapeHtml(node.provider)}</span></li>`
+  ).join("");
+  const executions = result.executions.map((item) => {
+    const state = item.status === "success" ? "success" : "failed";
+    const detail = item.status === "success"
+      ? `${item.attempts} attempt${item.attempts === 1 ? "" : "s"}`
+      : escapeHtml(item.errors.join("; "));
+    return `<li class="execution-${state}"><strong>${escapeHtml(item.capability)}</strong><span>${escapeHtml(item.status)} · ${detail}</span></li>`;
+  }).join("");
+
+  article.innerHTML = `
+    <div class="message-avatar">N</div>
+    <div class="message-content workflow-content">
+      <span class="message-role">Noor · Orchestra</span>
+      <p>${result.success ? "Workflow completed successfully." : "Workflow stopped at a failed step."}</p>
+      <details open>
+        <summary>Task graph</summary>
+        <ol class="workflow-list">${plan}</ol>
+      </details>
+      <details>
+        <summary>Execution & verification</summary>
+        <ol class="workflow-list">${executions}</ol>
+      </details>
+      <p class="next-step"><strong>Next:</strong> ${escapeHtml(result.next_step)}</p>
+    </div>`;
 
   messages.appendChild(article);
   messages.scrollTop = messages.scrollHeight;
@@ -62,13 +80,8 @@ function appendMessage(text, role = "assistant") {
 
 function escapeHtml(value) {
   const element = document.createElement("div");
-  element.textContent = value;
+  element.textContent = String(value ?? "");
   return element.innerHTML;
-}
-
-function nextStepFor(text) {
-  const match = suggestionMap.find((item) => item.match.test(text));
-  return match?.text ?? "Next step: I’ll interpret the request, break it into tasks, choose the required capabilities, and verify the result before reporting back.";
 }
 
 function resizeInput() {
@@ -76,10 +89,55 @@ function resizeInput() {
   input.style.height = `${Math.min(input.scrollHeight, 110)}px`;
 }
 
+async function checkHealth() {
+  try {
+    const response = await fetch("/api/health", { cache: "no-store" });
+    if (!response.ok) throw new Error("Health check failed");
+    statusText.textContent = "Connected";
+  } catch {
+    statusText.textContent = "Start Noor server";
+  }
+}
+
+async function uploadWorkbook(file) {
+  const body = new FormData();
+  body.append("file", file);
+  statusText.textContent = "Uploading";
+  const response = await fetch("/api/upload", { method: "POST", body });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(payload.error || "Upload failed");
+  selectedExcelPath = payload.upload.path;
+  fileName.textContent = payload.upload.filename;
+  statusText.textContent = "Connected";
+}
+
+async function executeRequest(text) {
+  const response = await fetch("/api/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message: text, path: selectedExcelPath }),
+  });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(payload.error || "Noor could not execute the request");
+  return payload;
+}
+
 orb.addEventListener("click", openChat);
 closeChat.addEventListener("click", closePanel);
 
-form.addEventListener("submit", (event) => {
+excelFile.addEventListener("change", async () => {
+  const file = excelFile.files?.[0];
+  if (!file) return;
+  try {
+    await uploadWorkbook(file);
+    appendMessage(`Attached ${file.name}. I can now execute Excel V1 operations against this workbook.`);
+  } catch (error) {
+    statusText.textContent = "Error";
+    appendMessage(error.message || "Workbook upload failed.");
+  }
+});
+
+form.addEventListener("submit", async (event) => {
   event.preventDefault();
   const text = input.value.trim();
   if (!text) return;
@@ -87,6 +145,7 @@ form.addEventListener("submit", (event) => {
   appendMessage(text, "user");
   input.value = "";
   resizeInput();
+  statusText.textContent = "Planning";
 
   const typing = document.createElement("article");
   typing.className = "message assistant-message";
@@ -94,15 +153,21 @@ form.addEventListener("submit", (event) => {
     <div class="message-avatar">N</div>
     <div class="message-content">
       <span class="message-role">Noor</span>
-      <p class="typing">Thinking about the workflow…</p>
+      <p class="typing">Building the task graph and selecting providers…</p>
     </div>`;
   messages.appendChild(typing);
   messages.scrollTop = messages.scrollHeight;
 
-  window.setTimeout(() => {
+  try {
+    const result = await executeRequest(text);
     typing.remove();
-    appendMessage(nextStepFor(text));
-  }, 450);
+    statusText.textContent = result.success ? "Verified" : "Attention required";
+    appendWorkflow(result);
+  } catch (error) {
+    typing.remove();
+    statusText.textContent = "Error";
+    appendMessage(error.message || "Noor could not complete the request.");
+  }
 });
 
 input.addEventListener("input", resizeInput);
@@ -124,3 +189,5 @@ suggestions.addEventListener("click", (event) => {
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && panel.classList.contains("is-open")) closePanel();
 });
+
+checkHealth();
