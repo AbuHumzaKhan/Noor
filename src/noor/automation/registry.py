@@ -36,11 +36,13 @@ def default_registry() -> TaskRegistry:
     """Build the safe default registry with analytics, ingestion and Excel capabilities."""
     registry = TaskRegistry()
     from .data_ingest import DataIngestSkill
+    from .excel_advanced import AdvancedExcelSkill
     from .excel_skill import ExcelSkill
     from .tasks.data_profiling import profile_data
 
     ingest = DataIngestSkill()
     excel = ExcelSkill()
+    advanced = AdvancedExcelSkill()
     registry.register(TaskSpec("data.inspect", "Inspect a supported dataset file.",
                                "noor.automation.data_ingest:DataIngestSkill.inspect", "analytics",
                                ("read_data",)), ingest.inspect)
@@ -85,8 +87,34 @@ def default_registry() -> TaskRegistry:
                                "noor.automation.excel_skill:ExcelSkill.analyze_sheet", "excel",
                                ("read_data", "compute_statistics")),
                       lambda c: excel.analyze_sheet(str(c["path"]), str(c["sheet_name"])))
+    registry.register(TaskSpec("excel.summary", "Summarize workbook structure and worksheet settings.",
+                               "noor.automation.excel_advanced:AdvancedExcelSkill.workbook_summary", "excel",
+                               ("read_workbook",)), lambda c: advanced.workbook_summary(str(c["path"])))
+    registry.register(TaskSpec("excel.search", "Search workbook cells for text.",
+                               "noor.automation.excel_advanced:AdvancedExcelSkill.search", "excel",
+                               ("read_workbook",)), lambda c: advanced.search(str(c["path"]), str(c["query"]), c.get("sheet_name"), int(c.get("limit", 100))))
+    registry.register(TaskSpec("excel.create_sheet", "Create a worksheet.",
+                               "noor.automation.excel_advanced:AdvancedExcelSkill.create_sheet", "excel",
+                               ("write_workbook",)), lambda c: advanced.create_sheet(str(c["path"]), str(c["sheet_name"]), c.get("output_path")))
+    registry.register(TaskSpec("excel.rename_sheet", "Rename a worksheet.",
+                               "noor.automation.excel_advanced:AdvancedExcelSkill.rename_sheet", "excel",
+                               ("write_workbook",)), lambda c: advanced.rename_sheet(str(c["path"]), str(c["sheet_name"]), str(c["new_name"]), c.get("output_path")))
+    registry.register(TaskSpec("excel.freeze", "Freeze worksheet panes.",
+                               "noor.automation.excel_advanced:AdvancedExcelSkill.freeze", "excel",
+                               ("write_workbook",)), lambda c: advanced.freeze(str(c["path"]), str(c["sheet_name"]), str(c["cell"]), c.get("output_path")))
+    registry.register(TaskSpec("excel.filter", "Set an AutoFilter range.",
+                               "noor.automation.excel_advanced:AdvancedExcelSkill.set_filter", "excel",
+                               ("write_workbook",)), lambda c: advanced.set_filter(str(c["path"]), str(c["sheet_name"]), str(c["cell_range"]), c.get("output_path")))
+    registry.register(TaskSpec("excel.sort", "Sort worksheet rows by a column.",
+                               "noor.automation.excel_advanced:AdvancedExcelSkill.sort_by_column", "excel",
+                               ("write_workbook", "transform_data")), lambda c: advanced.sort_by_column(str(c["path"]), str(c["sheet_name"]), str(c["column"]), c.get("output_path"), bool(c.get("descending", False))))
+    registry.register(TaskSpec("excel.formula.validate", "Validate basic Excel formula syntax and blocked functions.",
+                               "noor.automation.excel_advanced:AdvancedExcelSkill.validate_formula", "excel",
+                               ("validate_formula",)), lambda c: advanced.validate_formula(str(c["formula"])))
+    registry.register(TaskSpec("excel.formula.explain", "Explain an Excel formula.",
+                               "noor.automation.excel_advanced:AdvancedExcelSkill.explain_formula", "excel",
+                               ("explain_formula",)), lambda c: advanced.explain_formula(str(c["formula"])))
     registry.register(TaskSpec("result.verify", "Structurally verify a previous task output.",
                                "noor.automation.verification:verify_result", "verification",
-                               ("verify_result",)),
-                      lambda c: verify_result(str(c["capability"]), dict(c.get(c["capability"], {}))))
+                               ("verify_result",)), lambda c: verify_result(str(c["capability"]), dict(c.get(c["capability"], {}))))
     return registry
