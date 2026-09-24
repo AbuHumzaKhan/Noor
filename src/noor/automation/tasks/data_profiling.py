@@ -55,8 +55,8 @@ def profile_data(context: dict[str, Any]) -> dict[str, Any]:
 
     return {
         "path": str(path),
-        "rows": int(len(frame)),
-        "columns": int(len(frame.columns)),
+        "rows": len(frame),
+        "columns": len(frame.columns),
         "duplicate_rows": int(frame.duplicated().sum()),
         "memory_bytes": int(frame.memory_usage(deep=True).sum()),
         "column_profile": columns,
