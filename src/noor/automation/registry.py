@@ -17,15 +17,19 @@ class TaskRegistry:
         self._handlers: dict[str, TaskHandler] = {}
 
     def register(self, spec: TaskSpec, handler: TaskHandler) -> None:
-        if spec.name in self._specs: raise ValueError(f"Task already registered: {spec.name}")
+        if spec.name in self._specs:
+            raise ValueError(f"Task already registered: {spec.name}")
         self._specs[spec.name] = spec
         self._handlers[spec.name] = handler
 
     def get(self, name: str) -> tuple[TaskSpec, TaskHandler]:
-        try: return self._specs[name], self._handlers[name]
-        except KeyError as exc: raise KeyError(f"Unknown automation task: {name}") from exc
+        try:
+            return self._specs[name], self._handlers[name]
+        except KeyError as exc:
+            raise KeyError(f"Unknown automation task: {name}") from exc
 
-    def list(self) -> tuple[TaskSpec, ...]: return tuple(self._specs.values())
+    def list(self) -> tuple[TaskSpec, ...]:
+        return tuple(self._specs.values())
 
 
 def default_registry() -> TaskRegistry:
@@ -36,11 +40,17 @@ def default_registry() -> TaskRegistry:
     from .excel_analysis import FullExcelAnalysisSkill
     from .excel_intelligence_runtime import RuntimeExcelIntelligenceSkill
     from .excel_native import NativeExcelSkill
+    from .excel_query_engine import ExcelQueryEngine
     from .excel_skill import ExcelSkill
     from .tasks.data_profiling import profile_data
 
-    ingest = DataIngestSkill(); excel = ExcelSkill(); advanced = AdvancedExcelSkill()
-    intelligence = RuntimeExcelIntelligenceSkill(); full_analysis = FullExcelAnalysisSkill(); native = NativeExcelSkill()
+    ingest = DataIngestSkill()
+    excel = ExcelSkill()
+    advanced = AdvancedExcelSkill()
+    intelligence = RuntimeExcelIntelligenceSkill()
+    query_engine = ExcelQueryEngine()
+    full_analysis = FullExcelAnalysisSkill()
+    native = NativeExcelSkill()
 
     registry.register(TaskSpec("data.inspect", "Inspect a supported dataset file.", "noor.automation.data_ingest:DataIngestSkill.inspect", "analytics", ("read_data",)), lambda c: ingest.inspect(str(c["path"])))
     registry.register(TaskSpec("data.load", "Load a bounded supported dataset into tabular records.", "noor.automation.data_ingest:DataIngestSkill.load", "analytics", ("read_data",)), lambda c: ingest.load(str(c["path"]), sheet_name=str(c["sheet_name"]) if c.get("sheet_name") else None, nrows=int(c.get("nrows", 1000))))
@@ -63,7 +73,7 @@ def default_registry() -> TaskRegistry:
     registry.register(TaskSpec("excel.formula.explain", "Explain an Excel formula.", "noor.automation.excel_advanced:AdvancedExcelSkill.explain_formula", "excel", ("explain_formula",)), lambda c: advanced.explain_formula(str(c["formula"])))
 
     registry.register(TaskSpec("excel.intelligence.profile", "Deeply profile the attached dataset for Excel analysis.", "noor.automation.excel_intelligence:ExcelIntelligenceSkill.profile", "excel", ("read_data", "compute_statistics")), lambda c: intelligence.profile(c["path"], c.get("sheet_name")))
-    registry.register(TaskSpec("excel.intelligence.answer", "Answer a natural-language question using computed dataset evidence.", "noor.automation.excel_intelligence:ExcelIntelligenceSkill.answer_question", "excel", ("read_data", "compute_statistics")), lambda c: intelligence.answer_question(c["path"], str(c["question"]), c.get("sheet_name")))
+    registry.register(TaskSpec("excel.intelligence.answer", "Answer natural-language questions using schema-aware computed dataset evidence.", "noor.automation.excel_query_engine:ExcelQueryEngine.answer", "excel", ("read_data", "compute_statistics")), lambda c: query_engine.answer(c["path"], str(c["question"]), c.get("sheet_name")))
     registry.register(TaskSpec("excel.intelligence.formula", "Recommend an Excel formula from the dataset and request.", "noor.automation.excel_intelligence:ExcelIntelligenceSkill.recommend_formula", "excel", ("read_data", "generate_formula")), lambda c: intelligence.recommend_formula(c["path"], str(c["request"]), c.get("sheet_name"), str(c.get("excel_version", "2021"))))
     registry.register(TaskSpec("excel.intelligence.questions", "Generate useful analytical questions from the dataset schema.", "noor.automation.excel_intelligence:ExcelIntelligenceSkill.generate_questions", "excel", ("read_data",)), lambda c: intelligence.generate_questions(c["path"], c.get("sheet_name"), int(c.get("limit", 12))))
     registry.register(TaskSpec("excel.intelligence.pivot", "Create a deterministic pivot-style analytical summary.", "noor.automation.excel_intelligence:ExcelIntelligenceSkill.pivot_summary", "excel", ("read_data", "compute_statistics")), lambda c: intelligence.pivot_summary(c["path"], str(c["row_field"]), c.get("value_field"), c.get("column_field"), str(c.get("aggfunc", "sum")), c.get("sheet_name")))
