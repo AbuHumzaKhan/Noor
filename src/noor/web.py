@@ -17,7 +17,12 @@ from .automation.registry import default_registry
 from .automation.v1_planner import V1Planner
 
 MAX_BODY_BYTES = 25 * 1024 * 1024
-ALLOWED_UPLOADS = {".xlsx", ".xlsm", ".xltx", ".xltm"}
+ALLOWED_UPLOADS = {
+    ".csv", ".tsv", ".txt", ".json", ".jsonl", ".ndjson", ".xml", ".xlsx", ".xlsm", ".xltx", ".xltm",
+    ".xls", ".ods", ".parquet", ".feather", ".pkl", ".pickle", ".sas7bdat", ".xpt", ".sav", ".zsav",
+    ".dta", ".arff", ".h5", ".hdf", ".hdf5", ".html", ".htm", ".sql", ".db", ".sqlite", ".sqlite3",
+    ".avro", ".orc", ".dat", ".data",
+}
 
 
 class NoorApplication:
@@ -54,7 +59,7 @@ class NoorApplication:
     def save_upload(self, filename: str, content: bytes) -> dict[str, str | int]:
         suffix = Path(filename).suffix.lower()
         if suffix not in ALLOWED_UPLOADS:
-            raise ValueError(f"Unsupported Excel upload: {suffix or 'missing extension'}")
+            raise ValueError(f"Unsupported dataset upload: {suffix or 'missing extension'}")
         if not content:
             raise ValueError("Uploaded file is empty")
         if len(content) > MAX_BODY_BYTES:
@@ -66,27 +71,16 @@ class NoorApplication:
 
     @staticmethod
     def _serialize_graph(graph: TaskGraph) -> list[dict[str, Any]]:
-        return [
-            {
-                "id": node.id,
-                "capability": node.capability,
-                "inputs": node.inputs,
-                "depends_on": list(node.depends_on),
-                "retries": node.retries,
-                "provider": node.capability,
-            }
-            for node in graph.nodes
-        ]
+        return [{
+            "id": node.id, "capability": node.capability, "inputs": node.inputs,
+            "depends_on": list(node.depends_on), "retries": node.retries, "provider": node.capability,
+        } for node in graph.nodes]
 
     @staticmethod
     def _serialize_execution(execution: Any) -> dict[str, Any]:
         return {
-            "node_id": execution.node_id,
-            "capability": execution.capability,
-            "provider": execution.capability,
-            "status": execution.status,
-            "attempts": execution.attempts,
-            "errors": execution.errors,
+            "node_id": execution.node_id, "capability": execution.capability, "provider": execution.capability,
+            "status": execution.status, "attempts": execution.attempts, "errors": execution.errors,
             "output": execution.output,
         }
 
@@ -104,7 +98,7 @@ class NoorApplication:
 
 
 class NoorRequestHandler(BaseHTTPRequestHandler):
-    server_version = "NoorV1/0.1"
+    server_version = "NoorV1/0.2"
 
     @property
     def app(self) -> NoorApplication:
@@ -140,7 +134,7 @@ class NoorRequestHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         path = urlparse(self.path).path
         if path == "/api/health":
-            self._send_json({"status": "ok", "service": "noor", "version": "v1-excel"})
+            self._send_json({"status": "ok", "service": "noor", "version": "v1-data-excel", "upload_formats": len(ALLOWED_UPLOADS)})
             return
         self._serve_ui(path)
 
@@ -179,7 +173,7 @@ class NoorRequestHandler(BaseHTTPRequestHandler):
             if filename:
                 content = part.get_payload(decode=True) or b""
                 return {"upload": self.app.save_upload(filename, content)}
-        raise ValueError("No Excel file was included in the upload")
+        raise ValueError("No dataset file was included in the upload")
 
     def _serve_ui(self, path: str) -> None:
         relative = path.lstrip("/") or "preview.html"
@@ -193,11 +187,7 @@ class NoorRequestHandler(BaseHTTPRequestHandler):
             return
         if not candidate.is_file():
             candidate = self.web_root / "preview.html"
-        content_type = {
-            ".html": "text/html; charset=utf-8",
-            ".css": "text/css; charset=utf-8",
-            ".js": "application/javascript; charset=utf-8",
-        }.get(candidate.suffix, "application/octet-stream")
+        content_type = {".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8", ".js": "application/javascript; charset=utf-8"}.get(candidate.suffix, "application/octet-stream")
         body = candidate.read_bytes()
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", content_type)
