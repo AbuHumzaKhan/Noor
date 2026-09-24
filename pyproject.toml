@@ -20,6 +20,7 @@ analytics = [
     "tables>=3.10",
     "pyreadstat>=1.2",
     "scipy>=1.13",
+    "fastavro>=1.9",
 ]
 dev = ["pytest>=8", "ruff>=0.8", "mypy>=1.13"]
 
