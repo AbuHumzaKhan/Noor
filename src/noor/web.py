@@ -60,23 +60,15 @@ class NoorApplication:
         }
 
     def preview_dataset(self, path: str, sheet_name: str | None = None, nrows: int = 25) -> dict[str, Any]:
-        """Return a bounded, UI-safe preview for a dataset uploaded to Noor."""
         file_path = self._validate_uploaded_path(path)
         loaded = self.ingest.load(str(file_path), sheet_name=sheet_name, nrows=nrows)
         return {
-            "filename": file_path.name,
-            "format": loaded["format"],
-            "extension": file_path.suffix.lower(),
-            "bytes": file_path.stat().st_size,
-            "rows_returned": loaded["rows_returned"],
-            "columns": loaded["columns"],
-            "dtypes": loaded["dtypes"],
-            "records": loaded["records"],
-            "preview_limit": nrows,
+            "filename": file_path.name, "format": loaded["format"], "extension": file_path.suffix.lower(),
+            "bytes": file_path.stat().st_size, "rows_returned": loaded["rows_returned"], "columns": loaded["columns"],
+            "dtypes": loaded["dtypes"], "records": loaded["records"], "preview_limit": nrows,
         }
 
     def profile_dataset(self, path: str) -> dict[str, Any]:
-        """Run the same deterministic profiling provider used by the Orchestra."""
         file_path = self._validate_uploaded_path(path)
         result = profile_data({"path": str(file_path)})
         result["filename"] = file_path.name
@@ -84,8 +76,7 @@ class NoorApplication:
         return result
 
     def _validate_uploaded_path(self, path: str) -> Path:
-        if not path:
-            raise ValueError("No dataset is attached")
+        if not path: raise ValueError("No dataset is attached")
         file_path = Path(path).expanduser().resolve()
         try:
             file_path.relative_to(self.upload_dir)
@@ -95,12 +86,9 @@ class NoorApplication:
 
     def save_upload(self, filename: str, content: bytes) -> dict[str, str | int]:
         suffix = Path(filename).suffix.lower()
-        if suffix not in ALLOWED_UPLOADS:
-            raise ValueError(f"Unsupported dataset upload: {suffix or 'missing extension'}")
-        if not content:
-            raise ValueError("Uploaded file is empty")
-        if len(content) > MAX_BODY_BYTES:
-            raise ValueError("Uploaded file exceeds the 25 MB limit")
+        if suffix not in ALLOWED_UPLOADS: raise ValueError(f"Unsupported dataset upload: {suffix or 'missing extension'}")
+        if not content: raise ValueError("Uploaded file is empty")
+        if len(content) > MAX_BODY_BYTES: raise ValueError("Uploaded file exceeds the 25 MB limit")
         safe_name = re.sub(r"[^A-Za-z0-9._-]", "_", Path(filename).name)
         destination = self.upload_dir / f"{uuid.uuid4().hex}_{safe_name}"
         destination.write_bytes(content)
@@ -108,34 +96,24 @@ class NoorApplication:
 
     @staticmethod
     def _serialize_graph(graph: TaskGraph) -> list[dict[str, Any]]:
-        return [{
-            "id": node.id, "capability": node.capability, "inputs": node.inputs,
-            "depends_on": list(node.depends_on), "retries": node.retries, "provider": node.capability,
-        } for node in graph.nodes]
+        return [{"id": node.id, "capability": node.capability, "inputs": node.inputs, "depends_on": list(node.depends_on), "retries": node.retries, "provider": node.capability} for node in graph.nodes]
 
     @staticmethod
     def _serialize_execution(execution: Any) -> dict[str, Any]:
-        return {
-            "node_id": execution.node_id, "capability": execution.capability, "provider": execution.capability,
-            "status": execution.status, "attempts": execution.attempts, "errors": execution.errors,
-            "output": execution.output,
-        }
+        return {"node_id": execution.node_id, "capability": execution.capability, "provider": execution.capability, "status": execution.status, "attempts": execution.attempts, "errors": execution.errors, "output": execution.output}
 
     @staticmethod
     def _next_step(executions: list[Any]) -> str:
-        if not executions:
-            return "No task was executed."
+        if not executions: return "No task was executed."
         failed = next((item for item in executions if item.status != "success"), None)
-        if failed:
-            return f"The {failed.capability} step needs attention before Noor can continue."
+        if failed: return f"The {failed.capability} step needs attention before Noor can continue."
         verified = [item for item in executions if item.capability == "result.verify"]
-        if verified and all(item.output.get("valid") for item in verified):
-            return "The workflow completed and the final result passed structural verification."
+        if verified and all(item.output.get("valid") for item in verified): return "The workflow completed and the final result passed structural verification."
         return "The workflow completed; inspect the execution details before continuing."
 
 
 class NoorRequestHandler(BaseHTTPRequestHandler):
-    server_version = "NoorV1/0.3"
+    server_version = "NoorV1/0.4"
 
     @property
     def app(self) -> NoorApplication:
@@ -157,8 +135,7 @@ class NoorRequestHandler(BaseHTTPRequestHandler):
 
     def _read_body(self) -> bytes:
         length = int(self.headers.get("Content-Length", "0"))
-        if length > MAX_BODY_BYTES:
-            raise ValueError("Request body exceeds the 25 MB limit")
+        if length > MAX_BODY_BYTES: raise ValueError("Request body exceeds the 25 MB limit")
         return self.rfile.read(length)
 
     def do_OPTIONS(self) -> None:
@@ -180,19 +157,12 @@ class NoorRequestHandler(BaseHTTPRequestHandler):
             path = urlparse(self.path).path
             if path == "/api/chat":
                 payload = json.loads(self._read_body().decode("utf-8"))
-                result = self.app.execute(
-                    str(payload.get("message", "")),
-                    str(payload["path"]) if payload.get("path") else None,
-                    str(payload["sheet_name"]) if payload.get("sheet_name") else None,
-                )
+                result = self.app.execute(str(payload.get("message", "")), str(payload["path"]) if payload.get("path") else None, str(payload["sheet_name"]) if payload.get("sheet_name") else None)
                 self._send_json(result)
                 return
             if path == "/api/preview":
                 payload = json.loads(self._read_body().decode("utf-8"))
-                result = self.app.preview_dataset(
-                    str(payload.get("path", "")),
-                    str(payload["sheet_name"]) if payload.get("sheet_name") else None,
-                )
+                result = self.app.preview_dataset(str(payload.get("path", "")), str(payload["sheet_name"]) if payload.get("sheet_name") else None)
                 self._send_json(result)
                 return
             if path == "/api/profile":
@@ -212,14 +182,10 @@ class NoorRequestHandler(BaseHTTPRequestHandler):
 
     def _parse_upload(self, body: bytes) -> dict[str, Any]:
         content_type = self.headers.get("Content-Type", "")
-        if "multipart/form-data" not in content_type:
-            raise ValueError("Upload must use multipart/form-data")
-        message = BytesParser(policy=default).parsebytes(
-            f"Content-Type: {content_type}\r\nMIME-Version: 1.0\r\n\r\n".encode() + body
-        )
+        if "multipart/form-data" not in content_type: raise ValueError("Upload must use multipart/form-data")
+        message = BytesParser(policy=default).parsebytes(f"Content-Type: {content_type}\r\nMIME-Version: 1.0\r\n\r\n".encode() + body)
         for part in message.iter_parts():
-            if part.get_content_disposition() != "form-data":
-                continue
+            if part.get_content_disposition() != "form-data": continue
             filename = part.get_filename()
             if filename:
                 content = part.get_payload(decode=True) or b""
@@ -236,10 +202,14 @@ class NoorRequestHandler(BaseHTTPRequestHandler):
         if root not in candidate.parents and candidate != root:
             self._send_json({"error": "Invalid path"}, HTTPStatus.BAD_REQUEST)
             return
-        if not candidate.is_file():
-            candidate = self.web_root / "preview.html"
+        if not candidate.is_file(): candidate = self.web_root / "preview.html"
         content_type = {".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8", ".js": "application/javascript; charset=utf-8"}.get(candidate.suffix, "application/octet-stream")
         body = candidate.read_bytes()
+        if candidate.name == "preview.html":
+            marker = b"</body>"
+            injection = b'  <script src="./intelligence-ui.js"></script>\n'
+            if marker in body and b'intelligence-ui.js' not in body:
+                body = body.replace(marker, injection + marker, 1)
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
