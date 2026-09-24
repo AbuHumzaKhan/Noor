@@ -65,11 +65,20 @@ class V1Planner:
         is_excel = source in self._EXCEL_EXTENSIONS
         has_dataset = bool(path and str(path).strip())
 
+        if has_dataset and is_excel and any(term in text for term in ("create pivot table", "native pivot", "actual pivot table", "make a pivot table")):
+            row_field = self._extract_group_field(request, path)
+            value_field = self._extract_value_field(request, path)
+            if not row_field: raise ValueError("Specify the PivotTable row field, for example: create pivot table of Sales by Category")
+            if not value_field: raise ValueError("Specify the value field, for example: create pivot table of Sales by Category")
+            return self.plan_excel_advanced("excel.native.pivot", {"path": path, "row_field": row_field, "value_field": value_field, "column_field": self._extract_column_field(request, row_field), "aggfunc": self._extract_aggregation(text), "sheet_name": sheet_name, "destination_sheet": "Noor_Pivot"})
+        if has_dataset and is_excel and any(term in text for term in ("create chart", "make a chart", "native chart", "insert chart")):
+            cell_range = self._extract_range(request)
+            if not cell_range: raise ValueError("Provide the chart source range, such as A1:B20")
+            return self.plan_excel_advanced("excel.native.chart", {"path": path, "sheet_name": sheet_name or "Sheet1", "source_range": cell_range, "chart_type": self._extract_chart_type(text)})
         if has_dataset and any(term in text for term in ("analyze complete", "analyze the complete", "full analysis", "deep analysis", "complete analysis", "analyze everything", "analyze all", "profile the complete", "profile the entire")):
             return self.plan_intelligence("excel.intelligence.full_analysis", {"path": path, "sheet_name": sheet_name})
         if has_dataset and any(term in text for term in ("which formula", "what formula", "formula should", "formula do i", "excel formula for", "recommend a formula")):
-            version = self._extract_excel_version(request)
-            return self.plan_intelligence("excel.intelligence.formula", {"path": path, "request": request, "sheet_name": sheet_name, "excel_version": version})
+            return self.plan_intelligence("excel.intelligence.formula", {"path": path, "request": request, "sheet_name": sheet_name, "excel_version": self._extract_excel_version(request)})
         if has_dataset and any(term in text for term in ("generate questions", "suggest questions", "what can i ask", "questions i can ask", "give me questions")):
             return self.plan_intelligence("excel.intelligence.questions", {"path": path, "sheet_name": sheet_name, "limit": 12})
         if has_dataset and any(term in text for term in ("pivot table", "pivot summary", "pivot report", "summarize by", "group by")):
@@ -122,7 +131,7 @@ class V1Planner:
             return self.plan_excel_read(path or "", sheet_name) if sheet_name else self.plan_excel_inspection(path or "")
         if path and any(term in text for term in ("inspect", "profile", "analyze", "load", "read", "show")):
             return self.plan_data_profile(path)
-        raise ValueError("Unsupported V1 request. Attach a dataset and ask Noor to inspect, profile, analyze, clean, answer questions, recommend formulas, build pivot summaries, or design reports.")
+        raise ValueError("Unsupported V1 request. Attach a dataset and ask Noor to inspect, profile, analyze, clean, answer questions, recommend formulas, build pivot tables, create reports, or design dashboards.")
 
     @staticmethod
     def _require_path(path: str) -> None:
@@ -161,6 +170,12 @@ class V1Planner:
     def _extract_column_field(request: str, row_field: str | None) -> str | None:
         match = re.search(r"(?:columns?|across)\s+['\"]?([^,?]+?)['\"]?(?:\?|$)", request, re.IGNORECASE)
         return match.group(1).strip() if match and match.group(1).strip() != (row_field or "") else None
+
+    @staticmethod
+    def _extract_chart_type(text: str) -> str:
+        for chart_type in ("scatter", "line", "pie", "bar", "column"):
+            if chart_type in text: return chart_type
+        return "column"
 
     @staticmethod
     def _extract_formula_query(request: str) -> str | None:
