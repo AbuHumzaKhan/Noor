@@ -15,6 +15,7 @@ from urllib.parse import urlparse
 from .automation.data_ingest import DataIngestSkill
 from .automation.orchestra import TaskGraph, UnifiedOrchestra
 from .automation.registry import default_registry
+from .automation.tasks.data_profiling import profile_data
 from .automation.v1_planner import V1Planner
 
 MAX_BODY_BYTES = 25 * 1024 * 1024
@@ -74,6 +75,14 @@ class NoorApplication:
             "preview_limit": nrows,
         }
 
+    def profile_dataset(self, path: str) -> dict[str, Any]:
+        """Run the same deterministic profiling provider used by the Orchestra."""
+        file_path = self._validate_uploaded_path(path)
+        result = profile_data({"path": str(file_path)})
+        result["filename"] = file_path.name
+        result["extension"] = file_path.suffix.lower()
+        return result
+
     def _validate_uploaded_path(self, path: str) -> Path:
         if not path:
             raise ValueError("No dataset is attached")
@@ -81,7 +90,7 @@ class NoorApplication:
         try:
             file_path.relative_to(self.upload_dir)
         except ValueError as exc:
-            raise ValueError("Dataset preview is only available for files uploaded through Noor") from exc
+            raise ValueError("Dataset access is only available for files uploaded through Noor") from exc
         return self.ingest.validate_path(str(file_path))
 
     def save_upload(self, filename: str, content: bytes) -> dict[str, str | int]:
@@ -126,7 +135,7 @@ class NoorApplication:
 
 
 class NoorRequestHandler(BaseHTTPRequestHandler):
-    server_version = "NoorV1/0.2"
+    server_version = "NoorV1/0.3"
 
     @property
     def app(self) -> NoorApplication:
@@ -184,6 +193,11 @@ class NoorRequestHandler(BaseHTTPRequestHandler):
                     str(payload.get("path", "")),
                     str(payload["sheet_name"]) if payload.get("sheet_name") else None,
                 )
+                self._send_json(result)
+                return
+            if path == "/api/profile":
+                payload = json.loads(self._read_body().decode("utf-8"))
+                result = self.app.profile_dataset(str(payload.get("path", "")))
                 self._send_json(result)
                 return
             if path == "/api/upload":
