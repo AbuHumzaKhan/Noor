@@ -65,7 +65,8 @@ class V1Planner:
         is_excel = source in self._EXCEL_EXTENSIONS
         has_dataset = bool(path and str(path).strip())
 
-        # Dataset intelligence takes priority over generic keyword routing.
+        if has_dataset and any(term in text for term in ("analyze complete", "analyze the complete", "full analysis", "deep analysis", "complete analysis", "analyze everything", "analyze all", "profile the complete", "profile the entire")):
+            return self.plan_intelligence("excel.intelligence.full_analysis", {"path": path, "sheet_name": sheet_name})
         if has_dataset and any(term in text for term in ("which formula", "what formula", "formula should", "formula do i", "excel formula for", "recommend a formula")):
             version = self._extract_excel_version(request)
             return self.plan_intelligence("excel.intelligence.formula", {"path": path, "request": request, "sheet_name": sheet_name, "excel_version": version})
@@ -80,11 +81,9 @@ class V1Planner:
         if has_dataset and any(term in text for term in ("dashboard", "dashboarding", "kpi report", "management report", "reporting layout", "create a report")):
             return self.plan_intelligence("excel.intelligence.dashboard", {"path": path, "sheet_name": sheet_name})
         if has_dataset and any(term in text for term in ("formula catalog", "all excel formulas", "excel functions", "list formulas", "formula functions")):
-            return TaskGraph(nodes=[TaskNode("excel.intelligence.formulas", "excel.intelligence.formulas", {"query": self._extract_formula_query(request)}) , self._verified("excel.intelligence.formulas", "excel.intelligence.formulas")])
+            return TaskGraph(nodes=[TaskNode("excel.intelligence.formulas", "excel.intelligence.formulas", {"query": self._extract_formula_query(request)}), self._verified("excel.intelligence.formulas", "excel.intelligence.formulas")])
         if has_dataset and self._looks_like_question(text):
             return self.plan_intelligence("excel.intelligence.answer", {"path": path, "question": request, "sheet_name": sheet_name})
-        if has_dataset and any(term in text for term in ("analyze complete", "analyze the complete", "full analysis", "deep analysis", "deep profile", "profile the complete", "profile the entire")):
-            return self.plan_intelligence("excel.intelligence.profile", {"path": path, "sheet_name": sheet_name})
         if has_dataset and any(term in text for term in ("analyze", "analysis", "profile", "profiling", "trend", "insight", "data quality")):
             return self.plan_intelligence("excel.intelligence.profile", {"path": path, "sheet_name": sheet_name})
 
