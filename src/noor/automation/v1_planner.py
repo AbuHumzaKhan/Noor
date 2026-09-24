@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from typing import ClassVar
 
 from .orchestra import TaskGraph, TaskNode
 
@@ -11,7 +12,7 @@ class V1Planner:
 
     _RANGE_PATTERN = re.compile(r"\b(?:[A-Za-z]{1,3}\d+:[A-Za-z]{1,3}\d+|[A-Za-z]{1,3}:[A-Za-z]{1,3})\b")
     _FORMULA_PATTERN = re.compile(r"=\s*[A-Za-z][A-Za-z0-9_.]*\s*\([^\n]+\)")
-    _EXCEL_EXTENSIONS = {".xlsx", ".xlsm", ".xltx", ".xltm", ".xls", ".ods"}
+    _EXCEL_EXTENSIONS: ClassVar[set[str]] = {".xlsx", ".xlsm", ".xltx", ".xltm", ".xls", ".ods"}
 
     @staticmethod
     def _verified(capability: str, depends_on: str) -> TaskNode:
@@ -63,7 +64,7 @@ class V1Planner:
         is_excel = source in self._EXCEL_EXTENSIONS
 
         if is_excel and any(term in text for term in ("search", "find", "lookup in workbook")):
-            query = self._extract_after(request, ("search", "find", "lookup"))
+            query = self._extract_search_query(request)
             if not query:
                 raise ValueError("Tell me what text to search for in the workbook")
             return self.plan_excel_advanced("excel.search", {"path": path, "query": query, "sheet_name": sheet_name})
@@ -160,3 +161,10 @@ class V1Planner:
                 if value:
                     return value
         return None
+
+    @staticmethod
+    def _extract_search_query(request: str) -> str | None:
+        match = re.search(r"(?:search|find)\s+(?:this\s+)?(?:workbook|sheet)?\s*(?:for|:)?\s*(.+)$", request, re.IGNORECASE)
+        if match:
+            return match.group(1).strip()
+        return V1Planner._extract_after(request, ("lookup in workbook",))
