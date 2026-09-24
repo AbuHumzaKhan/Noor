@@ -1,0 +1,30 @@
+version: 1
+skills:
+  - coding.python
+  - coding.sql
+  - coding.mysql
+  - coding.html
+  - coding.css
+  - coding.javascript
+  - coding.json
+  - coding.excel_formulas
+  - coding.powerbi_dax
+  - coding.powerbi_m
+  - data.profile
+  - data.clean
+  - data.eda
+  - data.transform
+  - data.visualize
+  - research.web
+  - research.extract
+  - browser.navigate
+  - browser.search
+  - filesystem.read
+  - filesystem.find
+  - git.inspect
+  - git.patch
+  - testing.run
+  - diagnostics.health
+  - memory.recall
+  - project.planning
+  - security.permissions
