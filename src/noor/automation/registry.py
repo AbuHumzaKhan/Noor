@@ -4,6 +4,7 @@ from collections.abc import Callable
 from typing import Any
 
 from .models import TaskSpec
+from .verification import verify_result
 
 TaskHandler = Callable[[dict[str, Any]], dict[str, Any]]
 
@@ -88,6 +89,19 @@ def default_registry() -> TaskRegistry:
             str(context["sheet_name"]),
             dict(context["cells"]),
             str(context["output_path"]) if context.get("output_path") else None,
+        ),
+    )
+    registry.register(
+        TaskSpec(
+            name="result.verify",
+            description="Structurally verify the output of a previous automation task.",
+            handler="noor.automation.verification:verify_result",
+            category="verification",
+            capabilities=("verify_result",),
+        ),
+        lambda context: verify_result(
+            str(context["capability"]),
+            dict(context.get(context["capability"], {})),
         ),
     )
     return registry
