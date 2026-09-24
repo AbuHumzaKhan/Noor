@@ -62,6 +62,10 @@
       </section>
 
       <section class="dataset-view is-hidden" id="datasetView" aria-live="polite">
+        <div class="compatibility-data" aria-hidden="true">
+          <span id="datasetTitle"></span><span id="datasetMeta"></span><span id="statFormat"></span><span id="statSize"></span>
+          <button id="refreshPreview" type="button"></button><button id="runProfile" type="button"></button>
+        </div>
         <section class="metric-strip" aria-label="Dataset metrics">
           <article class="metric-card metric-blue"><span>▦</span><div><small>Total Rows</small><strong id="statRows">—</strong><em id="statRowsHint">Profile to calculate</em></div></article>
           <article class="metric-card metric-purple"><span>▥</span><div><small>Total Columns</small><strong id="statColumns">—</strong><em id="statColumnsHint">Loaded schema</em></div></article>
