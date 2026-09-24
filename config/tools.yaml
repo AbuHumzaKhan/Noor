@@ -1,0 +1,30 @@
+version: 1
+tools:
+  - id: workspace.read
+    risk: low
+  - id: workspace.search
+    risk: low
+  - id: workspace.write
+    risk: medium
+  - id: workspace.patch
+    risk: medium
+  - id: git.status
+    risk: low
+  - id: git.diff
+    risk: low
+  - id: git.commit
+    risk: medium
+  - id: tests.run
+    risk: low
+  - id: browser.open
+    risk: low
+  - id: browser.navigate
+    risk: medium
+  - id: data.profile
+    risk: low
+  - id: data.clean
+    risk: medium
+  - id: data.visualize
+    risk: low
+  - id: system.diagnostics
+    risk: low
