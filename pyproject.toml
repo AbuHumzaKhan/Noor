@@ -17,6 +17,9 @@ analytics = [
 ]
 dev = ["pytest>=8", "ruff>=0.8", "mypy>=1.13"]
 
+[project.scripts]
+noor-web = "noor.web:run"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
