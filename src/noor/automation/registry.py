@@ -32,14 +32,13 @@ class TaskRegistry:
 
 
 def default_registry() -> TaskRegistry:
-    """Build the safe default registry.
-
-    Task implementations are imported lazily so the core engine remains
-    usable without analytics dependencies installed.
-    """
+    """Build the safe default registry with analytics and Excel capabilities."""
 
     registry = TaskRegistry()
+    from .excel_skill import ExcelSkill
     from .tasks.data_profiling import profile_data
+
+    excel = ExcelSkill()
 
     registry.register(
         TaskSpec(
@@ -50,5 +49,45 @@ def default_registry() -> TaskRegistry:
             capabilities=("read_data", "compute_statistics"),
         ),
         profile_data,
+    )
+    registry.register(
+        TaskSpec(
+            name="excel.inspect",
+            description="Inspect an Excel workbook and return worksheet dimensions.",
+            handler="noor.automation.excel_skill:ExcelSkill.inspect",
+            category="excel",
+            capabilities=("read_workbook",),
+        ),
+        excel.inspect,
+    )
+    registry.register(
+        TaskSpec(
+            name="excel.read",
+            description="Read a bounded worksheet region without executing workbook macros.",
+            handler="noor.automation.excel_skill:ExcelSkill.read_sheet",
+            category="excel",
+            capabilities=("read_workbook", "read_data"),
+        ),
+        lambda context: excel.read_sheet(
+            str(context["path"]),
+            str(context["sheet_name"]),
+            int(context.get("max_rows", ExcelSkill.DEFAULT_MAX_ROWS)),
+            int(context.get("max_columns", ExcelSkill.DEFAULT_MAX_COLUMNS)),
+        ),
+    )
+    registry.register(
+        TaskSpec(
+            name="excel.write",
+            description="Write explicit cell values or formulas to an Excel workbook.",
+            handler="noor.automation.excel_skill:ExcelSkill.write_cells",
+            category="excel",
+            capabilities=("write_workbook",),
+        ),
+        lambda context: excel.write_cells(
+            str(context["path"]),
+            str(context["sheet_name"]),
+            dict(context["cells"]),
+            str(context["output_path"]) if context.get("output_path") else None,
+        ),
     )
     return registry
