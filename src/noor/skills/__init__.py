@@ -1,0 +1,1 @@
+"""Noor skill adapters."""
