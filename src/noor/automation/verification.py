@@ -24,6 +24,19 @@ def verify_result(capability: str, output: dict[str, Any]) -> dict[str, Any]:
             errors.append("Excel write must report at least one written cell")
         if not output.get("output"):
             errors.append("Excel write must report an output path")
+    elif capability == "excel.formula.generate":
+        if not isinstance(output.get("formula"), str) or not output["formula"].startswith("="):
+            errors.append("Formula generation must return an Excel formula")
+    elif capability == "excel.transform":
+        if not output.get("output"):
+            errors.append("Excel transformation must report an output path")
+        if not isinstance(output.get("changes"), int):
+            errors.append("Excel transformation must report an integer change count")
+    elif capability == "excel.analyze":
+        if not isinstance(output.get("numeric_summary"), dict):
+            errors.append("Excel analysis must return a numeric summary")
+        if not isinstance(output.get("rows"), int) or not isinstance(output.get("columns"), int):
+            errors.append("Excel analysis must report integer row and column counts")
     elif capability == "data.profile" and not output:
         errors.append("Profile output cannot be empty")
 
