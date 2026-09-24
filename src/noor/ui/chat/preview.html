@@ -1,20 +1,94 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Interactive visual preview for the Noor chat interface">
-  <title>Noor — Interactive Chat Preview</title><link rel="stylesheet" href="./styles.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Noor data workspace and interactive automation assistant">
+  <title>Noor — Data Workspace</title>
+  <link rel="stylesheet" href="./styles.css">
 </head>
 <body class="preview-page">
-  <main class="preview-shell"><section class="preview-stage" aria-label="Noor interactive preview"><div class="preview-copy"><span class="preview-badge">LIVE ORCHESTRA PREVIEW</span><h1>Meet Noor.</h1><p>Use the chat panel as the front door to the Automation Orchestra. Attach Excel, CSV, JSON, XML, Parquet, SQL, SQLite, statistical, and other supported datasets.</p><div class="preview-points"><span>Natural-language planning</span><span>25+ dataset formats</span><span>Advanced Excel V1</span><span>Provider + verification status</span></div></div></section></main>
-  <button class="noor-orb" id="noorOrb" type="button" aria-label="Open Noor chat" aria-expanded="true"><span class="orb-core" aria-hidden="true"></span><span class="orb-ring orb-ring-one" aria-hidden="true"></span><span class="orb-ring orb-ring-two" aria-hidden="true"></span><span class="orb-label">Noor</span></button>
+  <main class="preview-shell">
+    <section class="data-workspace" aria-label="Noor data workspace">
+      <header class="workspace-header">
+        <div>
+          <span class="preview-badge">NOOR DATA WORKSPACE</span>
+          <h1 id="workspaceTitle">Dataset Preview</h1>
+          <p id="workspaceSubtitle">Attach a dataset and Noor will display the real data here. Use the chat to inspect, profile, analyze, clean, transform, or automate it.</p>
+        </div>
+        <div class="workspace-state" id="workspaceState"><span class="status-dot"></span><span>Waiting for dataset</span></div>
+      </header>
+
+      <section class="dataset-empty" id="datasetEmpty" aria-live="polite">
+        <div class="empty-icon">+</div>
+        <h2>No dataset loaded</h2>
+        <p>Click the Noor orb, attach CSV, Excel, JSON, XML, Parquet, SQL/SQLite, statistical, or another supported dataset, and the preview will appear here.</p>
+      </section>
+
+      <section class="dataset-view is-hidden" id="datasetView" aria-live="polite">
+        <div class="dataset-toolbar">
+          <div class="dataset-file-info">
+            <strong id="datasetTitle">Dataset</strong>
+            <span id="datasetMeta">—</span>
+          </div>
+          <button class="refresh-button" id="refreshPreview" type="button">Refresh preview</button>
+        </div>
+
+        <div class="dataset-stats" id="datasetStats">
+          <article><span>Format</span><strong id="statFormat">—</strong></article>
+          <article><span>Rows shown</span><strong id="statRows">—</strong></article>
+          <article><span>Columns</span><strong id="statColumns">—</strong></article>
+          <article><span>File size</span><strong id="statSize">—</strong></article>
+        </div>
+
+        <div class="table-shell">
+          <div class="table-caption">
+            <div><strong>Live data preview</strong><span id="previewCaption">First 25 rows</span></div>
+            <span class="scroll-hint">Horizontal scroll available</span>
+          </div>
+          <div class="table-scroll">
+            <table id="dataTable">
+              <thead></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <button class="noor-orb" id="noorOrb" type="button" aria-label="Open Noor chat" aria-expanded="true">
+    <span class="orb-core" aria-hidden="true"></span><span class="orb-ring orb-ring-one" aria-hidden="true"></span><span class="orb-ring orb-ring-two" aria-hidden="true"></span><span class="orb-label">Noor</span>
+  </button>
+
   <aside class="chat-panel is-open" id="chatPanel" aria-label="Noor chat" aria-hidden="false">
-    <header class="chat-header"><div class="identity"><div class="mini-orb" aria-hidden="true"><span></span></div><div><strong>Noor</strong><span>Unified Automation Orchestra</span></div></div><button class="icon-button" id="closeChat" type="button" aria-label="Close chat">×</button></header>
+    <header class="chat-header">
+      <div class="identity"><div class="mini-orb" aria-hidden="true"><span></span></div><div><strong>Noor</strong><span>Unified Automation Orchestra</span></div></div>
+      <button class="icon-button" id="closeChat" type="button" aria-label="Close chat">×</button>
+    </header>
+
     <div class="status-bar" id="statusBar"><span class="status-dot"></span><span id="statusText">Connecting</span><span class="status-separator">•</span><span>V1 Data + Excel</span></div>
-    <div class="file-bar"><label class="file-button" for="datasetFile">Attach Dataset</label><input id="datasetFile" type="file" accept=".csv,.tsv,.txt,.json,.jsonl,.ndjson,.xml,.xlsx,.xlsm,.xltx,.xltm,.xls,.ods,.parquet,.feather,.pkl,.pickle,.sas7bdat,.xpt,.sav,.zsav,.dta,.arff,.h5,.hdf,.hdf5,.html,.htm,.sql,.db,.sqlite,.sqlite3,.avro,.orc,.dat,.data" hidden><span id="fileName">No dataset attached</span></div>
-    <div class="messages" id="messages" aria-live="polite"><article class="message assistant-message"><div class="message-avatar">N</div><div class="message-content"><span class="message-role">Noor</span><p>This is the live UI. Attach a dataset and ask Noor to inspect, profile, analyze, transform, search, or automate it.</p></div></article></div>
-    <div class="suggestions" id="suggestions" aria-label="Suggested next steps"><button type="button" data-prompt="Inspect my dataset">Inspect dataset</button><button type="button" data-prompt="Profile my data">Profile data</button><button type="button" data-prompt="Analyze my data">Analyze data</button><button type="button" data-prompt="Search this workbook for Revenue">Search workbook</button><button type="button" data-prompt="Validate formula =SUM(B2:B100)">Validate formula</button></div>
+
+    <div class="file-bar">
+      <label class="file-button" for="datasetFile">Attach Dataset</label>
+      <input id="datasetFile" type="file" accept=".csv,.tsv,.txt,.json,.jsonl,.ndjson,.xml,.xlsx,.xlsm,.xltx,.xltm,.xls,.ods,.parquet,.feather,.pkl,.pickle,.sas7bdat,.xpt,.sav,.zsav,.dta,.arff,.h5,.hdf,.hdf5,.html,.htm,.sql,.db,.sqlite,.sqlite3,.avro,.orc,.dat,.data" hidden>
+      <span id="fileName">No dataset attached</span>
+    </div>
+
+    <div class="messages" id="messages" aria-live="polite">
+      <article class="message assistant-message"><div class="message-avatar">N</div><div class="message-content"><span class="message-role">Noor</span><p>Attach a dataset. I will put the actual data on the workspace and use this chat as the control surface for analysis and automation.</p></div></article>
+    </div>
+
+    <div class="suggestions" id="suggestions" aria-label="Suggested next steps">
+      <button type="button" data-prompt="Inspect my dataset" data-requires-dataset="true" disabled>Inspect dataset</button>
+      <button type="button" data-prompt="Profile my data" data-requires-dataset="true" disabled>Profile data</button>
+      <button type="button" data-prompt="Analyze my data" data-requires-dataset="true" disabled>Analyze data</button>
+      <button type="button" data-prompt="Search this workbook for Revenue" data-requires-dataset="true" disabled>Search workbook</button>
+      <button type="button" data-prompt="Validate formula =SUM(B2:B100)">Validate formula</button>
+    </div>
+
     <form class="composer" id="chatForm"><label class="sr-only" for="messageInput">Message Noor</label><textarea id="messageInput" rows="1" placeholder="Tell Noor what you want to do..." autocomplete="off"></textarea><button class="send-button" type="submit" aria-label="Send message">↑</button></form>
-  </aside><script src="./app.js" defer></script>
+  </aside>
+  <script src="./app.js" defer></script>
 </body>
 </html>
