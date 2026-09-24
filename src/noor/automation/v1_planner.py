@@ -8,11 +8,24 @@ from .orchestra import TaskGraph, TaskNode
 
 
 class V1Planner:
-    """Deterministic natural-language planner for Noor V1 data and Excel skills."""
+    """Deterministic planner for Noor V1 data and Excel workflows.
+
+    Command routing remains explicit, but analytical questions are no longer
+    limited to a fixed list such as "total sales" or "average". Unknown
+    dataset questions are routed to the schema-aware Excel query engine.
+    """
 
     _RANGE_PATTERN = re.compile(r"\b(?:[A-Za-z]{1,3}\d+:[A-Za-z]{1,3}\d+|[A-Za-z]{1,3}:[A-Za-z]{1,3})\b")
     _FORMULA_PATTERN = re.compile(r"=\s*[A-Za-z][A-Za-z0-9_.]*\s*\([^\n]+\)")
     _EXCEL_EXTENSIONS: ClassVar[set[str]] = {".xlsx", ".xlsm", ".xltx", ".xltm", ".xls", ".ods"}
+    _DATA_QUERY_TERMS: ClassVar[tuple[str, ...]] = (
+        " by ", " per ", " wise", " group by", " grouped by", " each ",
+        "total", "sum", "average", "mean", "median", "minimum", "maximum",
+        "highest", "lowest", "top ", "count", "how many", "number of",
+        "sales", "revenue", "price", "cost", "amount", "compare", "comparison",
+        "breakdown", "distribution", "trend", "relationship", "correlation",
+        "missing", "duplicate", "outlier", "insight", "service", "category",
+    )
 
     @staticmethod
     def _verified(capability: str, depends_on: str) -> TaskNode:
@@ -43,7 +56,8 @@ class V1Planner:
 
     def plan_excel_read(self, path: str, sheet_name: str) -> TaskGraph:
         self._require_path(path)
-        if not sheet_name.strip(): raise ValueError("A worksheet name is required to read Excel data")
+        if not sheet_name.strip():
+            raise ValueError("A worksheet name is required to read Excel data")
         return TaskGraph(nodes=[TaskNode("excel.read", "excel.read", {"path": path, "sheet_name": sheet_name}), self._verified("excel.read", "excel.read")])
 
     def plan_excel_formula(self, operation: str, range_ref: str, *, criteria: str | None = None, true_value: object = None, false_value: object = None) -> TaskGraph:
@@ -51,7 +65,8 @@ class V1Planner:
 
     def plan_excel_transform(self, path: str, sheet_name: str, operation: str, output_path: str | None = None, *, column: str | None = None, value: object = None, new_name: str | None = None) -> TaskGraph:
         self._require_path(path)
-        if not sheet_name.strip(): raise ValueError("A worksheet name is required for Excel transformations")
+        if not sheet_name.strip():
+            raise ValueError("A worksheet name is required for Excel transformations")
         return TaskGraph(nodes=[TaskNode("excel.transform", "excel.transform", {"path": path, "sheet_name": sheet_name, "operation": operation, "output_path": output_path, "column": column, "value": value, "new_name": new_name}), self._verified("excel.transform", "excel.transform")])
 
     def plan_excel_advanced(self, capability: str, inputs: dict[str, object]) -> TaskGraph:
@@ -60,59 +75,87 @@ class V1Planner:
 
     def plan(self, request: str, path: str | None = None, sheet_name: str | None = None) -> TaskGraph:
         text = request.casefold().strip()
-        if not text: raise ValueError("request cannot be empty")
+        if not text:
+            raise ValueError("request cannot be empty")
         source = Path(path).suffix.lower() if path else ""
         is_excel = source in self._EXCEL_EXTENSIONS
         has_dataset = bool(path and str(path).strip())
 
         if has_dataset and is_excel and any(term in text for term in ("create pivot table", "native pivot", "actual pivot table", "make a pivot table")):
-            row_field = self._extract_group_field(request, path)
-            value_field = self._extract_value_field(request, path)
-            if not row_field: raise ValueError("Specify the PivotTable row field, for example: create pivot table of Sales by Category")
-            if not value_field: raise ValueError("Specify the value field, for example: create pivot table of Sales by Category")
+            row_field = self._extract_group_field(request)
+            value_field = self._extract_value_field(request)
+            if not row_field:
+                raise ValueError("Specify the PivotTable row field, for example: create pivot table of Sales by Category")
+            if not value_field:
+                raise ValueError("Specify the value field, for example: create pivot table of Sales by Category")
             return self.plan_excel_advanced("excel.native.pivot", {"path": path, "row_field": row_field, "value_field": value_field, "column_field": self._extract_column_field(request, row_field), "aggfunc": self._extract_aggregation(text), "sheet_name": sheet_name, "destination_sheet": "Noor_Pivot"})
+
         if has_dataset and is_excel and any(term in text for term in ("create chart", "make a chart", "native chart", "insert chart")):
             cell_range = self._extract_range(request)
-            if not cell_range: raise ValueError("Provide the chart source range, such as A1:B20")
+            if not cell_range:
+                raise ValueError("Provide the chart source range, such as A1:B20")
             return self.plan_excel_advanced("excel.native.chart", {"path": path, "sheet_name": sheet_name or "Sheet1", "source_range": cell_range, "chart_type": self._extract_chart_type(text)})
-        if has_dataset and any(term in text for term in ("analyze complete", "analyze the complete", "full analysis", "deep analysis", "complete analysis", "analyze everything", "analyze all", "profile the complete", "profile the entire")):
+
+        if has_dataset and any(term in text for term in ("analyze complete", "analyse complete", "analyze the complete", "analyse the complete", "full analysis", "deep analysis", "deep analyse", "complete analysis", "complete analyse", "analyze everything", "analyse everything", "analyze all", "analyse all", "profile the complete", "profile the entire")):
             return self.plan_intelligence("excel.intelligence.full_analysis", {"path": path, "sheet_name": sheet_name})
+
         if has_dataset and any(term in text for term in ("which formula", "what formula", "formula should", "formula do i", "excel formula for", "recommend a formula")):
             return self.plan_intelligence("excel.intelligence.formula", {"path": path, "request": request, "sheet_name": sheet_name, "excel_version": self._extract_excel_version(request)})
+
         if has_dataset and any(term in text for term in ("generate questions", "suggest questions", "what can i ask", "questions i can ask", "give me questions")):
             return self.plan_intelligence("excel.intelligence.questions", {"path": path, "sheet_name": sheet_name, "limit": 12})
+
         if has_dataset and any(term in text for term in ("pivot table", "pivot summary", "pivot report", "summarize by", "group by")):
-            row_field = self._extract_group_field(request, path)
-            value_field = self._extract_value_field(request, path)
+            row_field = self._extract_group_field(request)
+            value_field = self._extract_value_field(request)
             column_field = self._extract_column_field(request, row_field)
-            if not row_field: raise ValueError("Tell me which field to group by, for example: total sales by Category")
+            if not row_field:
+                raise ValueError("Tell me which field to group by, for example: total sales by Category")
             return self.plan_intelligence("excel.intelligence.pivot", {"path": path, "sheet_name": sheet_name, "row_field": row_field, "value_field": value_field, "column_field": column_field, "aggfunc": self._extract_aggregation(text)})
+
         if has_dataset and any(term in text for term in ("dashboard", "dashboarding", "kpi report", "management report", "reporting layout", "create a report")):
             return self.plan_intelligence("excel.intelligence.dashboard", {"path": path, "sheet_name": sheet_name})
+
         if has_dataset and any(term in text for term in ("formula catalog", "all excel formulas", "excel functions", "list formulas", "formula functions")):
             return TaskGraph(nodes=[TaskNode("excel.intelligence.formulas", "excel.intelligence.formulas", {"query": self._extract_formula_query(request)}), self._verified("excel.intelligence.formulas", "excel.intelligence.formulas")])
+
         if has_dataset and self._looks_like_question(text):
             return self.plan_intelligence("excel.intelligence.answer", {"path": path, "question": request, "sheet_name": sheet_name})
-        if has_dataset and any(term in text for term in ("analyze", "analysis", "profile", "profiling", "trend", "insight", "data quality")):
+
+        # Important: arbitrary analytical phrasing such as
+        # "city wise service cost" does not necessarily look like a question.
+        # Route it to the same schema-aware query engine instead of rejecting it.
+        if has_dataset and self._looks_like_data_query(text):
+            return self.plan_intelligence("excel.intelligence.answer", {"path": path, "question": request, "sheet_name": sheet_name})
+
+        if has_dataset and any(term in text for term in ("analyze", "analyse", "analysis", "profile", "profiling", "trend", "insight", "data quality")):
             return self.plan_intelligence("excel.intelligence.profile", {"path": path, "sheet_name": sheet_name})
 
         if is_excel and any(term in text for term in ("search", "find", "lookup in workbook")):
             query = self._extract_search_query(request)
-            if not query: raise ValueError("Tell me what text to search for in the workbook")
+            if not query:
+                raise ValueError("Tell me what text to search for in the workbook")
             return self.plan_excel_advanced("excel.search", {"path": path, "query": query, "sheet_name": sheet_name})
+
         if is_excel and "freeze" in text:
             return self.plan_excel_advanced("excel.freeze", {"path": path, "sheet_name": sheet_name or "Sheet1", "cell": self._extract_cell(request) or "A2"})
+
         if is_excel and any(term in text for term in ("filter", "autofilter", "auto filter")):
             cell_range = self._extract_range(request)
-            if not cell_range: raise ValueError("Provide a filter range such as A1:F100")
+            if not cell_range:
+                raise ValueError("Provide a filter range such as A1:F100")
             return self.plan_excel_advanced("excel.filter", {"path": path, "sheet_name": sheet_name or "Sheet1", "cell_range": cell_range})
+
         if is_excel and "sort" in text:
             return self.plan_excel_advanced("excel.sort", {"path": path, "sheet_name": sheet_name or "Sheet1", "column": self._extract_column(request) or "A", "descending": any(term in text for term in ("descending", "largest", "highest"))})
+
         if is_excel and "create sheet" in text:
             return self.plan_excel_advanced("excel.create_sheet", {"path": path, "sheet_name": self._extract_after(request, ("create sheet", "create worksheet")) or "NewSheet"})
+
         if is_excel and "rename sheet" in text:
             match = re.search(r"rename\s+(?:sheet|worksheet)\s+(.+?)\s+to\s+(.+)$", request, re.IGNORECASE)
-            if not match: raise ValueError("Use: rename sheet OldName to NewName")
+            if not match:
+                raise ValueError("Use: rename sheet OldName to NewName")
             return self.plan_excel_advanced("excel.rename_sheet", {"path": path, "sheet_name": match.group(1).strip(), "new_name": match.group(2).strip()})
 
         formula_match = self._FORMULA_PATTERN.search(request)
@@ -122,20 +165,27 @@ class V1Planner:
             return self.plan_excel_advanced("excel.formula.explain", {"formula": formula_match.group(0)})
         if is_excel and any(term in text for term in ("formula", "sum", "average", "avg", "count", "minimum", "maximum")):
             range_ref = self._extract_range(request)
-            if not range_ref: raise ValueError("I need a cell range, such as B2:B100, to generate the Excel formula")
+            if not range_ref:
+                raise ValueError("I need a cell range, such as B2:B100, to generate the Excel formula")
             return self.plan_excel_formula(self._formula_operation(text), range_ref)
         if is_excel and any(term in text for term in ("clean", "duplicate", "fill blank", "rename header")):
             operation = self._transform_operation(text)
             return self.plan_excel_transform(path or "", sheet_name or "", operation, column=self._extract_column(request) if operation in {"fill_blank", "rename_header"} else None, value=self._extract_fill_value(request) if operation == "fill_blank" else None, new_name=self._extract_rename_value(request) if operation == "rename_header" else None)
         if is_excel and any(term in text for term in ("read", "show", "inspect", "open", "workbook", "worksheet")):
             return self.plan_excel_read(path or "", sheet_name) if sheet_name else self.plan_excel_inspection(path or "")
-        if path and any(term in text for term in ("inspect", "profile", "analyze", "load", "read", "show")):
+        if path and any(term in text for term in ("inspect", "profile", "analyze", "analyse", "load", "read", "show")):
             return self.plan_data_profile(path)
         raise ValueError("Unsupported V1 request. Attach a dataset and ask Noor to inspect, profile, analyze, clean, answer questions, recommend formulas, build pivot tables, create reports, or design dashboards.")
 
+    @classmethod
+    def _looks_like_data_query(cls, text: str) -> bool:
+        padded = f" {text} "
+        return any(term in padded for term in cls._DATA_QUERY_TERMS)
+
     @staticmethod
     def _require_path(path: str) -> None:
-        if not path.strip(): raise ValueError("Attach a dataset or Excel workbook first")
+        if not path.strip():
+            raise ValueError("Attach a dataset or Excel workbook first")
 
     @staticmethod
     def _looks_like_question(text: str) -> bool:
@@ -157,12 +207,12 @@ class V1Planner:
         return "sum"
 
     @staticmethod
-    def _extract_group_field(request: str, path: str) -> str | None:
+    def _extract_group_field(request: str) -> str | None:
         match = re.search(r"(?:by|group\s+by|rows?)\s+['\"]?([^,?]+?)['\"]?(?:\s+(?:and|with|using)\s+|\?|$)", request, re.IGNORECASE)
         return match.group(1).strip() if match else None
 
     @staticmethod
-    def _extract_value_field(request: str, path: str) -> str | None:
+    def _extract_value_field(request: str) -> str | None:
         match = re.search(r"(?:sum|total|average|mean|count|minimum|maximum|median)\s+(?:of\s+)?['\"]?([^,?]+?)['\"]?\s+(?:by|group\s+by)", request, re.IGNORECASE)
         return match.group(1).strip() if match else None
 
