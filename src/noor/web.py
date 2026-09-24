@@ -130,21 +130,21 @@ class NoorRequestHandler(BaseHTTPRequestHandler):
             raise ValueError("Request body exceeds the 25 MB limit")
         return self.rfile.read(length)
 
-    def do_OPTIONS(self) -> None:  # noqa: N802
+    def do_OPTIONS(self) -> None:
         self.send_response(HTTPStatus.NO_CONTENT)
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.end_headers()
 
-    def do_GET(self) -> None:  # noqa: N802
+    def do_GET(self) -> None:
         path = urlparse(self.path).path
         if path == "/api/health":
             self._send_json({"status": "ok", "service": "noor", "version": "v1-excel"})
             return
         self._serve_ui(path)
 
-    def do_POST(self) -> None:  # noqa: N802
+    def do_POST(self) -> None:
         try:
             if urlparse(self.path).path == "/api/chat":
                 payload = json.loads(self._read_body().decode("utf-8"))
