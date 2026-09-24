@@ -12,6 +12,12 @@ const statusText = document.getElementById("statusText");
 let selectedDataPath = null;
 let selectedFileExtension = null;
 
+const DATASET_REQUEST_PATTERNS = [
+  /\b(inspect|profile|profiling|analy[sz]e|analysis|clean|cleaning|transform|duplicate|fill\s+blank|read|load|show)\b/i,
+  /\b(search|find|lookup)\b.*\b(workbook|sheet|dataset|data)\b/i,
+  /\b(create|rename|freeze|filter|sort)\b.*\b(sheet|worksheet|workbook)\b/i,
+];
+
 function openChat() {
   panel.classList.add("is-open");
   panel.setAttribute("aria-hidden", "false");
@@ -65,12 +71,27 @@ function resizeInput() {
   input.style.height = `${Math.min(input.scrollHeight, 110)}px`;
 }
 
+function requiresDataset(text) {
+  const normalized = text.trim();
+  if (!normalized) return false;
+  if (/\b(validate|check|explain)\s+(?:this\s+)?formula\b/i.test(normalized)) return false;
+  return DATASET_REQUEST_PATTERNS.some((pattern) => pattern.test(normalized));
+}
+
+function updateDatasetActions() {
+  document.querySelectorAll("button[data-requires-dataset='true']").forEach((button) => {
+    button.disabled = !selectedDataPath;
+    button.setAttribute("aria-disabled", String(!selectedDataPath));
+    button.title = selectedDataPath ? "Run this action" : "Attach a dataset first";
+  });
+}
+
 async function checkHealth() {
   try {
     const response = await fetch("/api/health", { cache: "no-store" });
     if (!response.ok) throw new Error("Health check failed");
     const payload = await response.json();
-    statusText.textContent = `Connected · ${payload.upload_formats}+ formats`;
+    statusText.textContent = `Ready · ${payload.upload_formats}+ formats`;
   } catch {
     statusText.textContent = "Start Noor server";
   }
@@ -86,7 +107,8 @@ async function uploadDataset(file) {
   selectedDataPath = payload.upload.path;
   selectedFileExtension = file.name.includes(".") ? file.name.split(".").pop().toLowerCase() : "data";
   fileName.textContent = `${payload.upload.filename} · .${selectedFileExtension}`;
-  statusText.textContent = "Connected";
+  statusText.textContent = "Dataset ready";
+  updateDatasetActions();
 }
 
 async function executeRequest(text) {
@@ -108,9 +130,9 @@ datasetFile.addEventListener("change", async () => {
   if (!file) return;
   try {
     await uploadDataset(file);
-    appendMessage(`Attached ${file.name}. I can now inspect, profile, analyze, and route this dataset to the appropriate V1 skill.`);
+    appendMessage(`Attached ${file.name}. Dataset actions are now available.`);
   } catch (error) {
-    statusText.textContent = "Error";
+    statusText.textContent = "Ready";
     appendMessage(error.message || "Dataset upload failed.");
   }
 });
@@ -122,8 +144,15 @@ form.addEventListener("submit", async (event) => {
   appendMessage(text, "user");
   input.value = "";
   resizeInput();
-  statusText.textContent = "Planning";
 
+  if (requiresDataset(text) && !selectedDataPath) {
+    statusText.textContent = "Ready";
+    appendMessage("Please attach a dataset first. Once it is attached, I can inspect, profile, analyze, clean, transform, or automate it.");
+    datasetFile.click();
+    return;
+  }
+
+  statusText.textContent = "Planning";
   const typing = document.createElement("article");
   typing.className = "message assistant-message";
   typing.innerHTML = `<div class="message-avatar">N</div><div class="message-content"><span class="message-role">Noor</span><p class="typing">Building the task graph and selecting providers…</p></div>`;
@@ -133,12 +162,19 @@ form.addEventListener("submit", async (event) => {
   try {
     const result = await executeRequest(text);
     typing.remove();
-    statusText.textContent = result.success ? "Verified" : "Attention required";
+    statusText.textContent = result.success ? "Completed" : "Attention required";
     appendWorkflow(result);
   } catch (error) {
     typing.remove();
-    statusText.textContent = "Error";
-    appendMessage(error.message || "Noor could not complete the request.");
+    const message = error.message || "Noor could not complete the request.";
+    if (/attach a dataset|workbook|dataset/i.test(message) && !selectedDataPath) {
+      statusText.textContent = "Ready";
+      appendMessage("Please attach a dataset first. I have kept the system ready so you can continue without restarting Noor.");
+      datasetFile.click();
+    } else {
+      statusText.textContent = "Error";
+      appendMessage(message);
+    }
   }
 });
 
@@ -152,7 +188,7 @@ input.addEventListener("keydown", (event) => {
 
 suggestions.addEventListener("click", (event) => {
   const button = event.target.closest("button[data-prompt]");
-  if (!button) return;
+  if (!button || button.disabled) return;
   input.value = button.dataset.prompt;
   resizeInput();
   form.requestSubmit();
@@ -162,4 +198,5 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && panel.classList.contains("is-open")) closePanel();
 });
 
+updateDatasetActions();
 checkHealth();
