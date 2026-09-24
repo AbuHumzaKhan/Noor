@@ -36,7 +36,7 @@ class AutomationRunner:
                         "duration_ms": round((perf_counter() - started) * 1000, 3),
                     }
                 )
-            except Exception as exc:  # boundary: preserve task failure as structured output
+            except Exception as exc:  # noqa: BLE001 - task boundary
                 result.success = False
                 result.status = "failed"
                 result.errors.append(f"{task_name}: {exc}")
