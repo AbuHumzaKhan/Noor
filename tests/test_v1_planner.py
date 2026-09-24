@@ -9,7 +9,7 @@ def test_generic_dataset_profile_plan() -> None:
 def test_excel_search_plan() -> None:
     graph = V1Planner().plan("Search this workbook for Revenue", "/tmp/sales.xlsx", "Sales")
     assert graph.nodes[0].capability == "excel.search"
-    assert graph.nodes[0].inputs["query"] == "this workbook for Revenue"
+    assert graph.nodes[0].inputs["query"] == "Revenue"
 
 
 def test_excel_formula_validation_plan() -> None:
