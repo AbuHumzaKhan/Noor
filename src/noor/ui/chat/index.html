@@ -17,60 +17,37 @@
   </main>
 
   <button class="noor-orb" id="noorOrb" type="button" aria-label="Open Noor chat" aria-expanded="false">
-    <span class="orb-core" aria-hidden="true"></span>
-    <span class="orb-ring orb-ring-one" aria-hidden="true"></span>
-    <span class="orb-ring orb-ring-two" aria-hidden="true"></span>
-    <span class="orb-label">Noor</span>
+    <span class="orb-core" aria-hidden="true"></span><span class="orb-ring orb-ring-one" aria-hidden="true"></span><span class="orb-ring orb-ring-two" aria-hidden="true"></span><span class="orb-label">Noor</span>
   </button>
 
   <aside class="chat-panel" id="chatPanel" aria-label="Noor chat" aria-hidden="true">
     <header class="chat-header">
-      <div class="identity">
-        <div class="mini-orb" aria-hidden="true"><span></span></div>
-        <div>
-          <strong>Noor</strong>
-          <span>Unified Automation Orchestra</span>
-        </div>
-      </div>
+      <div class="identity"><div class="mini-orb" aria-hidden="true"><span></span></div><div><strong>Noor</strong><span>Unified Automation Orchestra</span></div></div>
       <button class="icon-button" id="closeChat" type="button" aria-label="Close chat">×</button>
     </header>
 
-    <div class="status-bar" id="statusBar">
-      <span class="status-dot"></span>
-      <span id="statusText">Connecting</span>
-      <span class="status-separator">•</span>
-      <span>Excel V1</span>
-    </div>
+    <div class="status-bar" id="statusBar"><span class="status-dot"></span><span id="statusText">Connecting</span><span class="status-separator">•</span><span>V1 Data + Excel</span></div>
 
     <div class="file-bar">
-      <label class="file-button" for="excelFile">Attach Excel</label>
-      <input id="excelFile" type="file" accept=".xlsx,.xlsm,.xltx,.xltm" hidden>
-      <span id="fileName">No workbook attached</span>
+      <label class="file-button" for="datasetFile">Attach Dataset</label>
+      <input id="datasetFile" type="file" accept=".csv,.tsv,.txt,.json,.jsonl,.ndjson,.xml,.xlsx,.xlsm,.xltx,.xltm,.xls,.ods,.parquet,.feather,.pkl,.pickle,.sas7bdat,.xpt,.sav,.zsav,.dta,.arff,.h5,.hdf,.hdf5,.html,.htm,.sql,.db,.sqlite,.sqlite3,.avro,.orc,.dat,.data" hidden>
+      <span id="fileName">No dataset attached</span>
     </div>
 
     <div class="messages" id="messages" aria-live="polite">
-      <article class="message assistant-message">
-        <div class="message-avatar">N</div>
-        <div class="message-content">
-          <span class="message-role">Noor</span>
-          <p>I’m connected to the V1 Orchestra. Attach an Excel workbook or give me a supported Excel request. I’ll show the task graph, provider, execution status, and verification result.</p>
-        </div>
-      </article>
+      <article class="message assistant-message"><div class="message-avatar">N</div><div class="message-content"><span class="message-role">Noor</span><p>I’m connected to the V1 Orchestra. Attach a dataset or ask me for an Excel operation. I’ll show the task graph, provider, execution status, and verification result.</p></div></article>
     </div>
 
     <div class="suggestions" id="suggestions" aria-label="Suggested next steps">
-      <button type="button" data-prompt="Inspect an Excel workbook">Inspect workbook</button>
-      <button type="button" data-prompt="Profile my Excel data">Profile data</button>
-      <button type="button" data-prompt="Analyze my Excel data">Analyze data</button>
+      <button type="button" data-prompt="Inspect my dataset">Inspect dataset</button>
+      <button type="button" data-prompt="Profile my data">Profile data</button>
+      <button type="button" data-prompt="Analyze my data">Analyze data</button>
+      <button type="button" data-prompt="Search this workbook for Revenue">Search workbook</button>
+      <button type="button" data-prompt="Validate formula =SUM(B2:B100)">Validate formula</button>
     </div>
 
-    <form class="composer" id="chatForm">
-      <label class="sr-only" for="messageInput">Message Noor</label>
-      <textarea id="messageInput" rows="1" placeholder="Tell Noor what you want to do..." autocomplete="off"></textarea>
-      <button class="send-button" type="submit" aria-label="Send message">↑</button>
-    </form>
+    <form class="composer" id="chatForm"><label class="sr-only" for="messageInput">Message Noor</label><textarea id="messageInput" rows="1" placeholder="Tell Noor what you want to do..." autocomplete="off"></textarea><button class="send-button" type="submit" aria-label="Send message">↑</button></form>
   </aside>
-
   <script src="./app.js" defer></script>
 </body>
 </html>
