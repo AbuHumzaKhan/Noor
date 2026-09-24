@@ -37,12 +37,15 @@ def default_registry() -> TaskRegistry:
     registry = TaskRegistry()
     from .data_ingest import DataIngestSkill
     from .excel_advanced import AdvancedExcelSkill
+    from .excel_intelligence import ExcelIntelligenceSkill
     from .excel_skill import ExcelSkill
     from .tasks.data_profiling import profile_data
 
     ingest = DataIngestSkill()
     excel = ExcelSkill()
     advanced = AdvancedExcelSkill()
+    intelligence = ExcelIntelligenceSkill()
+
     registry.register(TaskSpec("data.inspect", "Inspect a supported dataset file.",
                                "noor.automation.data_ingest:DataIngestSkill.inspect", "analytics",
                                ("read_data",)),
@@ -56,35 +59,26 @@ def default_registry() -> TaskRegistry:
     registry.register(TaskSpec("data.profile", "Profile a tabular dataset.",
                                "noor.automation.tasks.data_profiling:profile_data", "analytics",
                                ("read_data", "compute_statistics")), profile_data)
+
     registry.register(TaskSpec("excel.inspect", "Inspect an Excel workbook.",
                                "noor.automation.excel_skill:ExcelSkill.inspect", "excel",
-                               ("read_workbook",)),
-                      lambda c: excel.inspect(str(c["path"])))
+                               ("read_workbook",)), lambda c: excel.inspect(str(c["path"])))
     registry.register(TaskSpec("excel.read", "Read a bounded worksheet region.",
                                "noor.automation.excel_skill:ExcelSkill.read_sheet", "excel",
                                ("read_workbook", "read_data")),
-                      lambda c: excel.read_sheet(str(c["path"]), str(c["sheet_name"]),
-                                                 int(c.get("max_rows", ExcelSkill.DEFAULT_MAX_ROWS)),
-                                                 int(c.get("max_columns", ExcelSkill.DEFAULT_MAX_COLUMNS))))
+                      lambda c: excel.read_sheet(str(c["path"]), str(c["sheet_name"]), int(c.get("max_rows", ExcelSkill.DEFAULT_MAX_ROWS)), int(c.get("max_columns", ExcelSkill.DEFAULT_MAX_COLUMNS))))
     registry.register(TaskSpec("excel.write", "Write explicit cell values or formulas.",
                                "noor.automation.excel_skill:ExcelSkill.write_cells", "excel",
                                ("write_workbook",)),
-                      lambda c: excel.write_cells(str(c["path"]), str(c["sheet_name"]), dict(c["cells"]),
-                                                  str(c["output_path"]) if c.get("output_path") else None))
+                      lambda c: excel.write_cells(str(c["path"]), str(c["sheet_name"]), dict(c["cells"]), str(c["output_path"]) if c.get("output_path") else None))
     registry.register(TaskSpec("excel.formula.generate", "Generate an allow-listed Excel formula.",
                                "noor.automation.excel_skill:ExcelSkill.generate_formula", "excel",
                                ("generate_formula",)),
-                      lambda c: excel.generate_formula(str(c["operation"]), str(c["range_ref"]),
-                                                       criteria=c.get("criteria"), true_value=c.get("true_value"),
-                                                       false_value=c.get("false_value")))
+                      lambda c: excel.generate_formula(str(c["operation"]), str(c["range_ref"]), criteria=c.get("criteria"), true_value=c.get("true_value"), false_value=c.get("false_value")))
     registry.register(TaskSpec("excel.transform", "Apply a deterministic workbook transformation.",
                                "noor.automation.excel_skill:ExcelSkill.transform_sheet", "excel",
                                ("write_workbook", "transform_data")),
-                      lambda c: excel.transform_sheet(str(c["path"]), str(c["sheet_name"]),
-                                                      str(c["operation"]),
-                                                      str(c["output_path"]) if c.get("output_path") else None,
-                                                      column=c.get("column"), value=c.get("value"),
-                                                      new_name=c.get("new_name")))
+                      lambda c: excel.transform_sheet(str(c["path"]), str(c["sheet_name"]), str(c["operation"]), str(c["output_path"]) if c.get("output_path") else None, column=c.get("column"), value=c.get("value"), new_name=c.get("new_name")))
     registry.register(TaskSpec("excel.analyze", "Calculate descriptive analytics for a worksheet.",
                                "noor.automation.excel_skill:ExcelSkill.analyze_sheet", "excel",
                                ("read_data", "compute_statistics")),
@@ -116,6 +110,29 @@ def default_registry() -> TaskRegistry:
     registry.register(TaskSpec("excel.formula.explain", "Explain an Excel formula.",
                                "noor.automation.excel_advanced:AdvancedExcelSkill.explain_formula", "excel",
                                ("explain_formula",)), lambda c: advanced.explain_formula(str(c["formula"])))
+
+    registry.register(TaskSpec("excel.intelligence.profile", "Deeply profile the attached dataset for Excel analysis.",
+                               "noor.automation.excel_intelligence:ExcelIntelligenceSkill.profile", "excel",
+                               ("read_data", "compute_statistics")), lambda c: intelligence.profile(str(c["path"]), c.get("sheet_name")))
+    registry.register(TaskSpec("excel.intelligence.answer", "Answer a natural-language question using computed dataset evidence.",
+                               "noor.automation.excel_intelligence:ExcelIntelligenceSkill.answer_question", "excel",
+                               ("read_data", "compute_statistics")), lambda c: intelligence.answer_question(str(c["path"]), str(c["question"]), c.get("sheet_name")))
+    registry.register(TaskSpec("excel.intelligence.formula", "Recommend an Excel formula from the dataset and request.",
+                               "noor.automation.excel_intelligence:ExcelIntelligenceSkill.recommend_formula", "excel",
+                               ("read_data", "generate_formula")), lambda c: intelligence.recommend_formula(str(c["path"]), str(c["request"]), c.get("sheet_name"), str(c.get("excel_version", "2021"))))
+    registry.register(TaskSpec("excel.intelligence.questions", "Generate useful analytical questions from the dataset schema.",
+                               "noor.automation.excel_intelligence:ExcelIntelligenceSkill.generate_questions", "excel",
+                               ("read_data",)), lambda c: intelligence.generate_questions(str(c["path"]), c.get("sheet_name"), int(c.get("limit", 12))))
+    registry.register(TaskSpec("excel.intelligence.pivot", "Create a deterministic pivot-style analytical summary.",
+                               "noor.automation.excel_intelligence:ExcelIntelligenceSkill.pivot_summary", "excel",
+                               ("read_data", "compute_statistics")), lambda c: intelligence.pivot_summary(str(c["path"]), str(c["row_field"]), c.get("value_field"), c.get("column_field"), str(c.get("aggfunc", "sum")), c.get("sheet_name")))
+    registry.register(TaskSpec("excel.intelligence.dashboard", "Recommend a dashboard structure from the actual dataset schema.",
+                               "noor.automation.excel_intelligence:ExcelIntelligenceSkill.dashboard_spec", "excel",
+                               ("read_data", "compute_statistics")), lambda c: intelligence.dashboard_spec(str(c["path"]), c.get("sheet_name")))
+    registry.register(TaskSpec("excel.intelligence.formulas", "Search the researched Excel formula catalog.",
+                               "noor.automation.excel_intelligence:ExcelIntelligenceSkill.formula_catalog", "excel",
+                               ("read_knowledge",)), lambda c: intelligence.formula_catalog(c.get("category"), c.get("query")))
+
     registry.register(TaskSpec("result.verify", "Structurally verify a previous task output.",
                                "noor.automation.verification:verify_result", "verification",
                                ("verify_result",)), lambda c: verify_result(str(c["capability"]), dict(c.get(c["capability"], {}))))
