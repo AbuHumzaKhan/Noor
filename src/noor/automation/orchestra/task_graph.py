@@ -105,6 +105,7 @@ class UnifiedOrchestra:
                         execution.status = "success"
                         execution.output = output
                         context[node.id] = output
+                        context[node.capability] = output
                         completed.add(node.id)
                         break
                     except Exception as exc:  # noqa: BLE001 - provider boundary
