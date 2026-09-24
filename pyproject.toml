@@ -4,12 +4,17 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "noor"
-version = "0.1.0"
-description = "Noor — an autonomous, safety-aware AI development partner"
+version = "0.2.0"
+description = "Noor — an autonomous, safety-aware AI development and analytics automation partner"
 requires-python = ">=3.12"
 dependencies = []
 
 [project.optional-dependencies]
+analytics = [
+    "pandas>=2.2",
+    "openpyxl>=3.1",
+    "pyarrow>=16",
+]
 dev = ["pytest>=8", "ruff>=0.8", "mypy>=1.13"]
 
 [tool.pytest.ini_options]
