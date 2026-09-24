@@ -5,11 +5,12 @@ const form = document.getElementById("chatForm");
 const input = document.getElementById("messageInput");
 const messages = document.getElementById("messages");
 const suggestions = document.getElementById("suggestions");
-const excelFile = document.getElementById("excelFile");
+const datasetFile = document.getElementById("datasetFile");
 const fileName = document.getElementById("fileName");
 const statusText = document.getElementById("statusText");
 
-let selectedExcelPath = null;
+let selectedDataPath = null;
+let selectedFileExtension = null;
 
 function openChat() {
   panel.classList.add("is-open");
@@ -33,12 +34,7 @@ function appendMessage(text, role = "assistant") {
   if (role === "user") {
     article.innerHTML = `<div class="message-content"><p>${escapeHtml(text)}</p></div>`;
   } else {
-    article.innerHTML = `
-      <div class="message-avatar">N</div>
-      <div class="message-content">
-        <span class="message-role">Noor</span>
-        <p>${escapeHtml(text)}</p>
-      </div>`;
+    article.innerHTML = `<div class="message-avatar">N</div><div class="message-content"><span class="message-role">Noor</span><p>${escapeHtml(text)}</p></div>`;
   }
   messages.appendChild(article);
   messages.scrollTop = messages.scrollHeight;
@@ -47,33 +43,13 @@ function appendMessage(text, role = "assistant") {
 function appendWorkflow(result) {
   const article = document.createElement("article");
   article.className = "message assistant-message workflow-message";
-  const plan = result.plan.map((node) =>
-    `<li><strong>${escapeHtml(node.id)}</strong><span>${escapeHtml(node.provider)}</span></li>`
-  ).join("");
+  const plan = result.plan.map((node) => `<li><strong>${escapeHtml(node.id)}</strong><span>${escapeHtml(node.provider)}</span></li>`).join("");
   const executions = result.executions.map((item) => {
     const state = item.status === "success" ? "success" : "failed";
-    const detail = item.status === "success"
-      ? `${item.attempts} attempt${item.attempts === 1 ? "" : "s"}`
-      : escapeHtml(item.errors.join("; "));
+    const detail = item.status === "success" ? `${item.attempts} attempt${item.attempts === 1 ? "" : "s"}` : escapeHtml(item.errors.join("; "));
     return `<li class="execution-${state}"><strong>${escapeHtml(item.capability)}</strong><span>${escapeHtml(item.status)} · ${detail}</span></li>`;
   }).join("");
-
-  article.innerHTML = `
-    <div class="message-avatar">N</div>
-    <div class="message-content workflow-content">
-      <span class="message-role">Noor · Orchestra</span>
-      <p>${result.success ? "Workflow completed successfully." : "Workflow stopped at a failed step."}</p>
-      <details open>
-        <summary>Task graph</summary>
-        <ol class="workflow-list">${plan}</ol>
-      </details>
-      <details>
-        <summary>Execution & verification</summary>
-        <ol class="workflow-list">${executions}</ol>
-      </details>
-      <p class="next-step"><strong>Next:</strong> ${escapeHtml(result.next_step)}</p>
-    </div>`;
-
+  article.innerHTML = `<div class="message-avatar">N</div><div class="message-content workflow-content"><span class="message-role">Noor · Orchestra</span><p>${result.success ? "Workflow completed successfully." : "Workflow stopped at a failed step."}</p><details open><summary>Task graph</summary><ol class="workflow-list">${plan}</ol></details><details><summary>Execution & verification</summary><ol class="workflow-list">${executions}</ol></details><p class="next-step"><strong>Next:</strong> ${escapeHtml(result.next_step)}</p></div>`;
   messages.appendChild(article);
   messages.scrollTop = messages.scrollHeight;
 }
@@ -93,21 +69,23 @@ async function checkHealth() {
   try {
     const response = await fetch("/api/health", { cache: "no-store" });
     if (!response.ok) throw new Error("Health check failed");
-    statusText.textContent = "Connected";
+    const payload = await response.json();
+    statusText.textContent = `Connected · ${payload.upload_formats}+ formats`;
   } catch {
     statusText.textContent = "Start Noor server";
   }
 }
 
-async function uploadWorkbook(file) {
+async function uploadDataset(file) {
   const body = new FormData();
   body.append("file", file);
   statusText.textContent = "Uploading";
   const response = await fetch("/api/upload", { method: "POST", body });
   const payload = await response.json();
   if (!response.ok) throw new Error(payload.error || "Upload failed");
-  selectedExcelPath = payload.upload.path;
-  fileName.textContent = payload.upload.filename;
+  selectedDataPath = payload.upload.path;
+  selectedFileExtension = file.name.includes(".") ? file.name.split(".").pop().toLowerCase() : "data";
+  fileName.textContent = `${payload.upload.filename} · .${selectedFileExtension}`;
   statusText.textContent = "Connected";
 }
 
@@ -115,7 +93,7 @@ async function executeRequest(text) {
   const response = await fetch("/api/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message: text, path: selectedExcelPath }),
+    body: JSON.stringify({ message: text, path: selectedDataPath }),
   });
   const payload = await response.json();
   if (!response.ok) throw new Error(payload.error || "Noor could not execute the request");
@@ -125,15 +103,15 @@ async function executeRequest(text) {
 orb.addEventListener("click", openChat);
 closeChat.addEventListener("click", closePanel);
 
-excelFile.addEventListener("change", async () => {
-  const file = excelFile.files?.[0];
+datasetFile.addEventListener("change", async () => {
+  const file = datasetFile.files?.[0];
   if (!file) return;
   try {
-    await uploadWorkbook(file);
-    appendMessage(`Attached ${file.name}. I can now execute Excel V1 operations against this workbook.`);
+    await uploadDataset(file);
+    appendMessage(`Attached ${file.name}. I can now inspect, profile, analyze, and route this dataset to the appropriate V1 skill.`);
   } catch (error) {
     statusText.textContent = "Error";
-    appendMessage(error.message || "Workbook upload failed.");
+    appendMessage(error.message || "Dataset upload failed.");
   }
 });
 
@@ -141,7 +119,6 @@ form.addEventListener("submit", async (event) => {
   event.preventDefault();
   const text = input.value.trim();
   if (!text) return;
-
   appendMessage(text, "user");
   input.value = "";
   resizeInput();
@@ -149,12 +126,7 @@ form.addEventListener("submit", async (event) => {
 
   const typing = document.createElement("article");
   typing.className = "message assistant-message";
-  typing.innerHTML = `
-    <div class="message-avatar">N</div>
-    <div class="message-content">
-      <span class="message-role">Noor</span>
-      <p class="typing">Building the task graph and selecting providers…</p>
-    </div>`;
+  typing.innerHTML = `<div class="message-avatar">N</div><div class="message-content"><span class="message-role">Noor</span><p class="typing">Building the task graph and selecting providers…</p></div>`;
   messages.appendChild(typing);
   messages.scrollTop = messages.scrollHeight;
 
