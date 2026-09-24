@@ -40,6 +40,11 @@ def verify_result(capability: str, output: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(output.get("kpis"), list) or not isinstance(output.get("charts"), list): errors.append("Dashboard specification must return KPIs and charts")
     elif capability == "excel.intelligence.formulas":
         if not isinstance(output.get("formulas"), list): errors.append("Formula catalog must return formulas")
+    elif capability == "excel.intelligence.full_analysis":
+        if not isinstance(output.get("profile"), dict): errors.append("Full analysis must include a profile")
+        if not isinstance(output.get("questions"), list): errors.append("Full analysis must include generated questions")
+        if not isinstance(output.get("findings"), list): errors.append("Full analysis must include findings")
+        if not isinstance(output.get("dashboard"), dict): errors.append("Full analysis must include a dashboard specification")
     elif capability == "data.profile" and not output:
         errors.append("Profile output cannot be empty")
 
