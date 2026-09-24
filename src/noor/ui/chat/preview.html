@@ -58,11 +58,15 @@
         </nav>
 
         <section class="workspace-view is-active" id="view-data" data-view-panel="data">
-          <div class="view-header"><div><h2>Data preview</h2><p>Actual records loaded from the attached dataset. Scroll horizontally for wide tables.</p></div><span class="view-note" id="previewCaption">First 25 rows</span></div>
+          <div class="view-header"><div><h2>Data preview</h2><p>Actual records loaded from the attached dataset. The grid keeps headers visible while you inspect wide and long tables.</p></div><span class="view-note" id="previewCaption">First 25 rows</span></div>
           <div class="table-shell">
-            <div class="table-caption"><span id="tableSchemaSummary">Schema loading…</span><span class="scroll-hint">Sticky headers · Horizontal scroll</span></div>
-            <div class="table-scroll">
-              <table id="dataTable"><thead></thead><tbody></tbody></table>
+            <div class="table-caption">
+              <span id="tableSchemaSummary">Schema loading…</span>
+              <span class="grid-selection" id="gridSelection">Click a cell to inspect · Double-click to copy</span>
+              <span class="scroll-hint">Frozen headers · Row numbers · Horizontal scroll</span>
+            </div>
+            <div class="table-scroll" id="dataTableScroll">
+              <table id="dataTable" aria-label="Dataset data grid"><thead></thead><tbody></tbody></table>
             </div>
           </div>
         </section>
@@ -104,5 +108,6 @@
     <form class="composer" id="chatForm"><label class="sr-only" for="messageInput">Message Noor</label><textarea id="messageInput" rows="1" placeholder="Ask Noor what to do with this data…" autocomplete="off"></textarea><button class="send-button" type="submit" aria-label="Send message">↑</button></form>
   </aside>
   <script src="./app.js" defer></script>
+  <script src="./grid.js" defer></script>
 </body>
 </html>
