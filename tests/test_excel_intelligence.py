@@ -60,3 +60,19 @@ def test_chat_routes_to_intelligence(tmp_path: Path) -> None:
 
     assert "excel.intelligence.answer" in capabilities
     assert result["success"] is True
+
+
+def test_complete_analysis_is_composed_and_verified(tmp_path: Path) -> None:
+    upload_dir = tmp_path / "uploads"
+    upload_dir.mkdir()
+    source = make_dataset(upload_dir)
+    app = NoorApplication(upload_dir=upload_dir)
+
+    result = app.execute("Analyze the complete data", str(source))
+    capabilities = [item["capability"] for item in result["executions"]]
+    analysis = next(item for item in result["executions"] if item["capability"] == "excel.intelligence.full_analysis")
+
+    assert "excel.intelligence.full_analysis" in capabilities
+    assert analysis["output"]["profile"]["rows"] == 5
+    assert analysis["output"]["questions"]
+    assert result["success"] is True
