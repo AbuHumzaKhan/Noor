@@ -35,6 +35,7 @@ class TaskRegistry:
 def default_registry() -> TaskRegistry:
     """Build the safe default registry with analytics, ingestion and Excel capabilities."""
     registry = TaskRegistry()
+    from .assistant_planner import AssistantPlanner
     from .data_ecosystem import DataEcosystemSkill
     from .data_ingest import DataIngestSkill
     from .excel_advanced import AdvancedExcelSkill
@@ -53,6 +54,9 @@ def default_registry() -> TaskRegistry:
     query_engine = ExcelQueryEngine()
     full_analysis = FullExcelAnalysisSkill()
     native = NativeExcelSkill()
+    planner = AssistantPlanner()
+
+    registry.register(TaskSpec("assistant.plan", "Plan a natural-language request across Noor's registered capabilities.", "noor.automation.assistant_planner:AssistantPlanner.plan", "assistant", ("read_knowledge",)), lambda c: planner.plan(str(c["command"]), dict(c.get("inputs", c))).as_dict())
 
     registry.register(TaskSpec("data.inspect", "Inspect a supported dataset file.", "noor.automation.data_ingest:DataIngestSkill.inspect", "analytics", ("read_data",)), lambda c: ingest.inspect(str(c["path"])))
     registry.register(TaskSpec("data.load", "Load a bounded supported dataset into tabular records.", "noor.automation.data_ingest:DataIngestSkill.load", "analytics", ("read_data",)), lambda c: ingest.load(str(c["path"]), sheet_name=str(c["sheet_name"]) if c.get("sheet_name") else None, nrows=int(c.get("nrows", 1000))))
