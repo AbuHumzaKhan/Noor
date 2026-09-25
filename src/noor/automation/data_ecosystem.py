@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+import re
 
 
 @dataclass(frozen=True)
@@ -69,11 +70,7 @@ ENGINES: tuple[EngineCapability, ...] = (
 
 
 class DataEcosystem:
-    """Unified capability gateway for Noor's selected open-source data stack.
-
-    Noor owns orchestration and safety. The upstream projects remain independent
-    execution engines; their source trees are intentionally not copied into Noor.
-    """
+    """Unified capability gateway for Noor's selected open-source data stack."""
 
     def __init__(self) -> None:
         self._engines = {engine.name: engine for engine in ENGINES}
@@ -107,20 +104,29 @@ class DataEcosystem:
         text = task.casefold()
         suffix = Path(source).suffix.casefold() if source else ""
 
-        if validation or any(term in text for term in ("validate", "quality", "expectation", "data quality")):
+        if validation or any(
+            term in text for term in ("validate", "quality", "expectation", "data quality")
+        ):
             if self._available(self._engines["great_expectations"]):
                 return "great_expectations"
 
-        if sql or any(term in text for term in ("sql", "query", "join", "cte", "window function")):
+        if sql or any(
+            term in text for term in ("sql", "query", "join", "cte", "window function")
+        ):
             if self._available(self._engines["duckdb"]):
                 return "duckdb"
 
-        if rows is not None and rows >= 1_000_000 and self._available(self._engines["polars"]):
-            return "polars"
-
-        if suffix in {".parquet", ".csv", ".jsonl", ".ndjson"} and self._available(self._engines["polars"]):
-            if any(term in text for term in ("large", "fast", "stream", "performance", "millions")):
+        if rows is not None and rows >= 1_000_000:
+            if self._available(self._engines["polars"]):
                 return "polars"
+
+        if suffix in {".parquet", ".csv", ".jsonl", ".ndjson"}:
+            if self._available(self._engines["polars"]):
+                if any(
+                    term in text
+                    for term in ("large", "fast", "stream", "performance", "millions")
+                ):
+                    return "polars"
 
         return "pandas"
 
@@ -147,7 +153,10 @@ class DataEcosystemSkill:
         return {
             "engines": self.ecosystem.catalog(),
             "available_engines": self.ecosystem.available(),
-            "principle": "Noor orchestrates; upstream open-source projects execute specialized workloads.",
+            "principle": (
+                "Noor orchestrates; upstream open-source projects execute "
+                "specialized workloads."
+            ),
         }
 
     def select_engine(self, **kwargs: Any) -> dict[str, Any]:
@@ -163,24 +172,31 @@ class DataEcosystemSkill:
     def execute_sql(self, query: str, source: str) -> dict[str, Any]:
         if not query.strip():
             raise ValueError("SQL query cannot be empty")
-        forbidden = ("insert", "update", "delete", "drop", "alter", "create", "replace", "truncate")
         normalized = query.strip().casefold()
-        if not (normalized.startswith("select") or normalized.startswith("with") or normalized.startswith("describe") or normalized.startswith("show")):
+        if ";" in normalized:
+            raise ValueError("Multiple SQL statements are blocked")
+        if not re.match(r"^(select|with|describe|show)\b", normalized):
             raise ValueError("Only read-only SQL statements are allowed")
-        if any(token in normalized.split() for token in forbidden):
+        forbidden = r"\b(insert|update|delete|drop|alter|create|replace|truncate|copy|attach|install|load)\b"
+        if re.search(forbidden, normalized):
             raise ValueError("Write or schema-mutating SQL is blocked")
         try:
             import duckdb
         except ImportError as exc:
-            raise RuntimeError("DuckDB support is not installed; install Noor's data-engine extra") from exc
+            raise RuntimeError(
+                "DuckDB support is not installed; install Noor's data-engine extra"
+            ) from exc
 
         suffix = Path(source).suffix.casefold()
+        safe_source = Path(source).as_posix().replace("'", "''")
         if suffix == ".parquet":
-            relation = f"read_parquet('{Path(source).as_posix()}')"
+            relation = f"read_parquet('{safe_source}')"
         elif suffix in {".csv", ".tsv"}:
-            relation = f"read_csv_auto('{Path(source).as_posix()}')"
+            relation = f"read_csv_auto('{safe_source}')"
         else:
-            raise ValueError("DuckDB file SQL currently supports CSV/TSV/Parquet sources")
+            raise ValueError(
+                "DuckDB file SQL currently supports CSV/TSV/Parquet sources"
+            )
         rewritten = query.replace("__NOOR_SOURCE__", relation)
         with duckdb.connect() as connection:
             frame = connection.execute(rewritten).fetchdf()
