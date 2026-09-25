@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-import re
 from typing import Any
 
 
@@ -40,7 +39,7 @@ class AssistantPlanner:
     ANALYSIS_TERMS = (
         "analyze", "analyse", "analysis", "dataset", "data", "excel", "spreadsheet", "csv",
         "parquet", "profile", "clean", "missing", "duplicate", "quality", "correlation",
-        "trend", "kpi", "pivot", "dashboard", "revenue", "sales", "sql", "query",
+        "trend", "kpi", "pivot", "dashboard", "revenue", "sales", "query",
     )
     LEARNING_TERMS = (
         "learn", "teach", "explain", "understand", "what is", "how does", "why does", "tutorial",
@@ -58,7 +57,9 @@ class AssistantPlanner:
         has_data = bool(source) and suffix in self.DATA_EXTENSIONS
         has_excel = suffix in {".xlsx", ".xls", ".xlsm"}
 
-        if has_data or any(term in normalized for term in self.ANALYSIS_TERMS):
+        # A supplied dataset is authoritative context: route data work before
+        # generic language such as "analyze this code" can trigger coding intent.
+        if has_data:
             return self._data_plan(normalized, context, has_excel)
 
         if any(term in normalized for term in self.CODE_TERMS):
@@ -69,6 +70,9 @@ class AssistantPlanner:
                 inputs=context,
                 requires_context=("workspace_or_code",),
             )
+
+        if any(term in normalized for term in self.ANALYSIS_TERMS):
+            return self._data_plan(normalized, context, has_excel=False)
 
         if any(term in normalized for term in self.LEARNING_TERMS):
             return AssistantPlan(
@@ -122,7 +126,6 @@ class AssistantPlanner:
             tasks.append("data.profile")
             reasons.append("profile the supplied data source")
 
-        # Preserve order while preventing duplicate execution when several rules match.
         unique_tasks = tuple(dict.fromkeys(tasks))
         confidence = 0.94 if unique_tasks else 0.68
         return AssistantPlan(
