@@ -35,6 +35,8 @@ class TaskRegistry:
 def default_registry() -> TaskRegistry:
     """Build the safe default registry with analytics, ingestion and Excel capabilities."""
     registry = TaskRegistry()
+    from .assistant_planner import AssistantPlanner
+    from .data_ecosystem import DataEcosystemSkill
     from .data_ingest import DataIngestSkill
     from .excel_advanced import AdvancedExcelSkill
     from .excel_analysis import FullExcelAnalysisSkill
@@ -45,16 +47,24 @@ def default_registry() -> TaskRegistry:
     from .tasks.data_profiling import profile_data
 
     ingest = DataIngestSkill()
+    ecosystem = DataEcosystemSkill()
     excel = ExcelSkill()
     advanced = AdvancedExcelSkill()
     intelligence = RuntimeExcelIntelligenceSkill()
     query_engine = ExcelQueryEngine()
     full_analysis = FullExcelAnalysisSkill()
     native = NativeExcelSkill()
+    planner = AssistantPlanner()
+
+    registry.register(TaskSpec("assistant.plan", "Plan a natural-language request across Noor's registered capabilities.", "noor.automation.assistant_planner:AssistantPlanner.plan", "assistant", ("read_knowledge",)), lambda c: planner.plan(str(c["command"]), dict(c.get("inputs", c))).as_dict())
 
     registry.register(TaskSpec("data.inspect", "Inspect a supported dataset file.", "noor.automation.data_ingest:DataIngestSkill.inspect", "analytics", ("read_data",)), lambda c: ingest.inspect(str(c["path"])))
     registry.register(TaskSpec("data.load", "Load a bounded supported dataset into tabular records.", "noor.automation.data_ingest:DataIngestSkill.load", "analytics", ("read_data",)), lambda c: ingest.load(str(c["path"]), sheet_name=str(c["sheet_name"]) if c.get("sheet_name") else None, nrows=int(c.get("nrows", 1000))))
     registry.register(TaskSpec("data.profile", "Profile a tabular dataset.", "noor.automation.tasks.data_profiling:profile_data", "analytics", ("read_data", "compute_statistics")), profile_data)
+
+    registry.register(TaskSpec("data.ecosystem.capabilities", "List NOOR's registered open-source analytical engines and capabilities.", "noor.automation.data_ecosystem:DataEcosystemSkill.capabilities", "analytics", ("read_knowledge",)), lambda c: ecosystem.capabilities())
+    registry.register(TaskSpec("data.ecosystem.select", "Select the most appropriate registered analytical engine for a task.", "noor.automation.data_ecosystem:DataEcosystemSkill.select_engine", "analytics", ("read_knowledge",)), lambda c: ecosystem.select_engine(task=str(c.get("task", "")), source=c.get("source"), rows=int(c["rows"]) if c.get("rows") is not None else None, sql=bool(c.get("sql", False)), validation=bool(c.get("validation", False))))
+    registry.register(TaskSpec("data.sql.query", "Execute a read-only analytical SQL query against a supported file source.", "noor.automation.data_ecosystem:DataEcosystemSkill.execute_sql", "analytics", ("read_data", "compute_statistics")), lambda c: ecosystem.execute_sql(str(c["query"]), str(c["path"])))
 
     registry.register(TaskSpec("excel.inspect", "Inspect an Excel workbook.", "noor.automation.excel_skill:ExcelSkill.inspect", "excel", ("read_workbook",)), lambda c: excel.inspect(str(c["path"])))
     registry.register(TaskSpec("excel.read", "Read a bounded worksheet region.", "noor.automation.excel_skill:ExcelSkill.read_sheet", "excel", ("read_workbook", "read_data")), lambda c: excel.read_sheet(str(c["path"]), str(c["sheet_name"]), int(c.get("max_rows", ExcelSkill.DEFAULT_MAX_ROWS)), int(c.get("max_columns", ExcelSkill.DEFAULT_MAX_COLUMNS))))

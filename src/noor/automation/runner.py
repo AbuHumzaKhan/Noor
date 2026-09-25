@@ -3,20 +3,35 @@ from __future__ import annotations
 from time import perf_counter
 from typing import Any
 
+from .assistant_planner import AssistantPlanner
 from .models import AutomationRequest, AutomationResult
 from .registry import TaskRegistry, default_registry
 
 
 class AutomationRunner:
-    """Execute a validated sequence of registered automation tasks."""
+    """Execute validated automation tasks selected from natural-language intent."""
 
     def __init__(self, registry: TaskRegistry | None = None) -> None:
         self.registry = registry or default_registry()
+        self.planner = AssistantPlanner()
 
     def run(self, request: AutomationRequest) -> AutomationResult:
-        task_names = request.requested_tasks or self._infer_initial_tasks(request.command)
-        result = AutomationResult(success=True, status="completed")
         context: dict[str, Any] = dict(request.inputs)
+        plan = self.planner.plan(request.command, context)
+        task_names = request.requested_tasks or plan.tasks
+        result = AutomationResult(success=True, status="completed")
+        result.outputs["assistant.plan"] = plan.as_dict()
+
+        if not task_names:
+            result.status = "planned"
+            if plan.requires_context:
+                result.warnings.append(
+                    "Additional context is required before Noor can execute this request: "
+                    + ", ".join(plan.requires_context)
+                )
+            else:
+                result.warnings.append("No executable registered task matched the request yet.")
+            return result
 
         for task_name in task_names:
             started = perf_counter()
@@ -27,7 +42,8 @@ class AutomationRunner:
                 else:
                     output = handler(context)
                     result.outputs[task_name] = output
-                    context.update(output)
+                    if isinstance(output, dict):
+                        context.update(output)
                 result.executed_tasks.append(task_name)
                 result.trace.append(
                     {
@@ -51,12 +67,6 @@ class AutomationRunner:
 
         return result
 
-    @staticmethod
-    def _infer_initial_tasks(command: str) -> tuple[str, ...]:
-        normalized = command.lower()
-        if any(term in normalized for term in ("profile", "profiling", "inspect dataset")):
-            return ("data.profile",)
-        raise ValueError(
-            "No automation plan is registered for this command. "
-            "Provide requested_tasks explicitly or add a planner/skill."
-        )
+    def plan(self, command: str, inputs: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Expose routing without executing any task; useful to the UI and tests."""
+        return self.planner.plan(command, inputs).as_dict()

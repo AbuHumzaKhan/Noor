@@ -1,0 +1,79 @@
+version: 1
+name: noor-data-ecosystem
+principle: "Noor owns orchestration, safety, verification, and user interaction; upstream projects remain execution engines."
+engines:
+  - id: pandas
+    repository: pandas-dev/pandas
+    role: dataframe
+    capabilities:
+      - tabular-analysis
+      - cleaning
+      - missing-values
+      - groupby
+      - joins
+      - aggregation
+      - time-series
+      - excel-io
+      - csv-io
+      - database-io
+    availability: core
+
+  - id: duckdb
+    repository: duckdb/duckdb
+    role: sql
+    capabilities:
+      - sql
+      - csv-query
+      - parquet-query
+      - joins
+      - cte
+      - window-functions
+      - nested-queries
+      - pandas-integration
+    availability: optional
+
+  - id: polars
+    repository: pola-rs/polars
+    role: high-performance-dataframe
+    capabilities:
+      - lazy-execution
+      - eager-execution
+      - streaming
+      - larger-than-memory
+      - multithreading
+      - csv-io
+      - parquet-io
+      - sql
+      - expressions
+    availability: optional
+
+  - id: great_expectations
+    repository: great-expectations/great_expectations
+    role: data-quality
+    capabilities:
+      - expectations
+      - schema-validation
+      - null-validation
+      - uniqueness-validation
+      - range-validation
+      - format-validation
+      - expectation-suites
+      - validation-results
+      - data-documentation
+    availability: optional
+
+  - id: apache_superset
+    repository: apache/superset
+    role: business-intelligence
+    capabilities:
+      - sql-editor
+      - charts
+      - dashboards
+      - semantic-metrics
+      - data-exploration
+      - visualizations
+      - database-connectors
+      - security
+      - api
+    availability: external-service
+    integration: planned-service-connector
