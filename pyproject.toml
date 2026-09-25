@@ -22,6 +22,11 @@ analytics = [
     "scipy>=1.13",
     "fastavro>=1.9",
 ]
+data-engines = [
+    "duckdb>=1.0",
+    "polars>=1.0",
+    "great-expectations>=1.0",
+]
 native-excel = ["pywin32>=306"]
 dev = ["pytest>=8", "ruff>=0.8", "mypy>=1.13"]
 
